@@ -1,4 +1,4 @@
-# test_ui — 화면 (Django)
+# storycast-ui — 화면 (Django)
 
 > 프로젝트 전체 구성, 결정 사항, **API 스펙(요청/응답 예시 포함)은 `../PLAN.md`가 기준**이다.
 > 작업 전에 반드시 읽고, 스펙에 없는 호출이 필요하면 먼저 사용자에게 확인한다. 스펙을 이 파일에 복사하지 않는다.
@@ -15,8 +15,8 @@ settings의 SECRET_KEY/DEBUG/ALLOWED_HOSTS는 환경변수(`DJANGO_SECRET_KEY`, 
 - 회차 검수(`episode.html` + `web/static/web/studio.js`)는 영상 편집기형 단일 화면: 장면 목록 · 영상 · 인스펙터 + 타임라인(장면 트랙, 선택 장면의 대사 레인). 페이지에 심은 JSON으로 브라우저에서 그리고, 판정 POST는 JSON 응답
 - 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 근거=형광펜 노랑, 반대 근거=빨간 밑줄, 검수 맞음/수정/틀림=청/노랑/빨강
 ```
-docker build -t vod-ui .
-docker run --rm --network test_api_default -p 8080:8080 -v "$PWD":/app vod-ui   # -v: 코드 수정 시 자동 reload
+docker build -t storycast-ui .
+docker run --rm --network storycast_default -p 8080:8080 -v "$PWD":/app storycast-ui   # -v: 코드 수정 시 자동 reload
 # --network: api compose 네트워크에 붙어 http://api:8000 으로 호출 (api를 먼저 띄울 것)
 ```
 

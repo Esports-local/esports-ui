@@ -128,4 +128,4 @@ MAILERS = {
     },
 }
 
-API_URL = os.environ.get("API_URL", "http://api:8000")  # api compose 네트워크(test_api_default)의 서비스 이름
+API_URL = os.environ.get("API_URL", "http://api:8000")  # api compose 네트워크(storycast_default)의 서비스 이름
