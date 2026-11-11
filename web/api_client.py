@@ -1,8 +1,6 @@
 """api 호출을 한 곳에 모은다. 주소는 settings.API_URL.
 
-확정 스펙(스펙 시트)에 있는 호출만 실제로 부른다.
-분석 결과 조회와 대사 검수 저장은 아직 스펙에 없어서 ApiError(501)를 낸다 —
-api에 호출이 생기면 이 파일의 두 함수만 바꾼다.
+확정 스펙(스펙 시트)에 있는 호출만 부른다.
 """
 
 import requests
@@ -59,19 +57,19 @@ def get_predict(series_id, target):
     return _http("GET", f"/series/{series_id}/predict", params={"target": target})
 
 
-# ---------------------------------------------------------------- 스펙 미정
-
-
 def get_analysis(episode_id):
-    """회차 분석 결과 (main analysis/episode.json 모양: scenes[].start_sec, lines …)."""
-    raise ApiError("분석 결과 조회는 아직 api 스펙에 없습니다", 501)
+    """GET /episodes/{id}/analysis — main analysis/episode.json 원본 (scenes[].start_sec, lines …)"""
+    return _http("GET", f"/episodes/{episode_id}/analysis")
 
 
 def get_line_reviews(episode_id):
-    """{"<scene_id>:<line_index>": {"verdict", "text"}}"""
-    return {}
+    """GET /episodes/{id}/reviews → {"<scene_id>:<index>": {"verdict", "text"}}"""
+    data = _http("GET", f"/episodes/{episode_id}/reviews")
+    return {f"{r['scene_id']}:{r['index']}": {"verdict": r["verdict"], "text": r["text"]} for r in data["items"]}
 
 
 def save_line_review(episode_id, scene_id, index, verdict, text=None):
-    """verdict: ok | wrong | fixed | clear. 저장된 판정(clear면 None)을 돌려준다."""
-    raise ApiError("대사 검수 저장은 아직 api 스펙에 없습니다", 501)
+    """POST /episodes/{id}/reviews. verdict: ok | wrong | fixed | clear. 저장된 판정(clear면 None)"""
+    body = {"scene_id": scene_id, "index": index, "verdict": verdict, "text": text}
+    review = _http("POST", f"/episodes/{episode_id}/reviews", json=body)["review"]
+    return review and {"verdict": review["verdict"], "text": review["text"]}

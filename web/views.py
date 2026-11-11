@@ -167,14 +167,7 @@ def review_line(request, episode_id, scene_id, index):
     verdict = request.POST.get("verdict", "")
     text = request.POST.get("text", "").strip() or None
     try:
-        analysis = api.get_analysis(episode_id)
-        scene = next(s for s in analysis["scenes"] if s["id"] == scene_id)
-        line = scene["lines"][index]
-        if verdict == "fixed" and (not text or text == line["text"]):
-            raise ApiError("고친 대사를 입력해 주세요", 400)
         review = api.save_line_review(episode_id, scene_id, index, verdict, text)
-    except (StopIteration, IndexError):
-        return JsonResponse({"error": "대사를 찾을 수 없습니다"}, status=404)
-    except ApiError as e:
+    except ApiError as e:  # 대사 없음(404)·고친 대사 누락(400) 검사는 api가 한다
         return JsonResponse({"error": e.message}, status=e.status)
     return JsonResponse({"review": review})
