@@ -8,11 +8,16 @@
 Django 템플릿 + htmx 수준으로 가볍게. 영상은 hls.js로 MinIO에서 직접 재생.
 
 ## 현재 상태
-`config/` Django 프로젝트만 생성됨 (startproject). `requirements.txt`: django, requests.
+`web/` 앱에 화면 1~4(드라마 → 예측 → 결과, 회차 검수 + 분석 JSON). 데이터는 전부 api에서 읽는다 (ui에 JSON 저장 안 함). `requirements.txt`: django, requests.
 settings의 SECRET_KEY/DEBUG/ALLOWED_HOSTS는 환경변수(`DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`)로 받음.
+- api 호출은 `web/api_client.py`에만. 주소는 `API_URL` (기본 `http://api:8000`)
+- 분석 결과 조회(`get_analysis`)와 대사 검수 저장(`save_line_review`)은 **api 스펙에 없음** → 지금은 회차 검수 화면에 "아직 api 스펙에 없습니다" 표시. api에 호출이 생기면 이 함수들만 바꾼다
+- 회차 검수(`episode.html` + `web/static/web/studio.js`)는 영상 편집기형 단일 화면: 장면 목록 · 영상 · 인스펙터 + 타임라인(장면 트랙, 선택 장면의 대사 레인). 페이지에 심은 JSON으로 브라우저에서 그리고, 판정 POST는 JSON 응답
+- 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 근거=형광펜 노랑, 반대 근거=빨간 밑줄, 검수 맞음/수정/틀림=청/노랑/빨강
 ```
 docker build -t vod-ui .
-docker run --rm -p 8080:8080 -v "$PWD":/app vod-ui   # -v: 코드 수정 시 자동 reload
+docker run --rm --network test_api_default -p 8080:8080 -v "$PWD":/app vod-ui   # -v: 코드 수정 시 자동 reload
+# --network: api compose 네트워크에 붙어 http://api:8000 으로 호출 (api를 먼저 띄울 것)
 ```
 
 ## 화면 (MVP)
@@ -27,8 +32,8 @@ docker run --rm -p 8080:8080 -v "$PWD":/app vod-ui   # -v: 코드 수정 시 자
 6. 창작 아이디어
 
 ## 작업 순서
-api가 준비되기 전에는 `fixtures/`의 목업 JSON으로 화면부터 만든다 (PLAN.md 응답 예시 형태 그대로).
-api 호출은 한 모듈(예: `api_client.py`)에 모아서, 목업 ↔ 실제 api 전환을 설정 하나로 하게 한다.
+데이터는 api에서만 읽는다. ui에 목업 JSON을 두지 않는다 (api가 떠 있어야 화면이 나옴).
+api 호출은 `web/api_client.py` 한 모듈에 모은다.
 
 ## 규칙 요약 (상세는 PLAN.md)
 - api 호출은 GET/POST만
