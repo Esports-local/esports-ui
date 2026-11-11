@@ -1,0 +1,5 @@
+<div class="notice" hx-get="{% url 'predict' series.id %}?target={{ result.target }}" hx-trigger="every 2s" hx-swap="outerHTML">
+  {% if result.status == "queued" %}{{ result.target }}화 예측을 접수했습니다. 순서를 기다리는 중입니다.
+  {% else %}{{ result.target }}화를 예측하고 있습니다. 앞 회차 분석 결과를 읽는 중입니다.{% endif %}
+  <span class="dim">끝나면 결과가 자동으로 나타납니다.</span>
+</div>

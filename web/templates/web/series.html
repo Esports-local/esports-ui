@@ -1,0 +1,50 @@
+{% extends "web/base.html" %}
+{% block title %}{{ series.title }}{% endblock %}
+{% block bar %}<span class="crumb">{{ series.title }}</span>{% endblock %}
+{% block content %}
+<main class="narrow">
+  <h1 class="page-title">{{ series.title }}</h1>
+  <p class="dim">{{ series.genres|join:", " }}{% if series.first_air_date %} · {{ series.first_air_date }} 첫 방영{% endif %}</p>
+  {% if series.synopsis %}<p class="serif">{{ series.synopsis }}</p>{% endif %}
+
+  <form class="predict-form" method="post" action="{% url 'predict' series.id %}">
+    {% csrf_token %}
+    <h2>다음 회차 예측</h2>
+    {% if targets %}
+    <label class="sel">
+      <span class="visually-hidden">예측할 회차</span>
+      <select name="target">
+        {% for t in targets %}<option value="{{ t }}"{% if forloop.last %} selected{% endif %}>{{ t }}화 예측 (1~{{ t|add:"-1" }}화 사용)</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn" type="submit">예측 시작</button>
+    {% for t in targets %}{% if forloop.last %}<a class="link" href="{% url 'predict' series.id %}?target={{ t }}">지난 결과 보기</a>{% endif %}{% endfor %}
+    {% else %}
+    <p class="dim">1화 분석이 끝나야 예측할 수 있습니다.</p>
+    {% endif %}
+  </form>
+
+  <h2>회차</h2>
+  <table class="table">
+    <thead><tr><th>회차</th><th>방영일</th><th>영상</th><th>분석</th><th></th></tr></thead>
+    <tbody>
+      {% for ep in series.episodes %}
+      <tr>
+        <td>{{ ep.title }}</td>
+        <td class="dim">{{ ep.air_date|default:"-" }}</td>
+        <td>{% if ep.has_video %}있음{% else %}<span class="dim">없음</span>{% endif %}</td>
+        <td><span class="status is-{{ ep.analyze_status }}">{{ ep.status_label }}</span></td>
+        <td class="right"><a class="link" href="{% url 'episode' ep.id %}">분석 결과 검수</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>등장인물</h2>
+  <ul class="cast">
+    {% for c in series.characters %}
+    <li><strong>{{ c.name }}</strong> <span class="dim">{{ c.actor }}{% if c.aliases %} · {{ c.aliases|join:", " }}{% endif %}</span></li>
+    {% endfor %}
+  </ul>
+</main>
+{% endblock %}

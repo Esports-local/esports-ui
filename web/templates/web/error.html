@@ -1,0 +1,7 @@
+{% extends "web/base.html" %}
+{% block content %}
+<main class="narrow">
+  <p class="notice is-error">{{ error }}</p>
+  <p><a href="{% url 'home' %}">드라마 목록으로 돌아가기</a></p>
+</main>
+{% endblock %}

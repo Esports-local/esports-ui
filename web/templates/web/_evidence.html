@@ -1,0 +1,15 @@
+{% load vod %}<li>
+  <button type="button" class="ev"
+          data-seek="{{ ev.start }}" data-src="{{ ev.episode.play_url|default:'' }}"
+          data-label="{{ ev.episode.number }}화 S#{{ ev.scene_id }} · {{ ev.start|tc }} ~ {{ ev.end|tc }}"
+          data-scene="scene-{{ ev.episode_id }}-{{ ev.scene_id }}"
+          {% if not ev.episode.play_url %}title="이 회차는 영상이 없습니다"{% endif %}>
+    <span class="ref">{{ ev.episode.number }}화 {{ ev.start|tc }}</span><span class="{{ kind }}">{{ ev.note }}</span>
+  </button>
+  {% if ev.scene %}
+  <template id="scene-{{ ev.episode_id }}-{{ ev.scene_id }}">
+    <p class="direction">{{ ev.scene.summary }}</p>
+    {% for line in ev.scene.lines %}<p><b>{{ line.speaker|default:"화자 미상" }}</b>{{ line.text }}</p>{% endfor %}
+  </template>
+  {% endif %}
+</li>
