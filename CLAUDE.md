@@ -26,10 +26,9 @@ Django 템플릿 위주, 자바스크립트는 최소로.
 - 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 블루 진영 = 파랑, 레드 진영 = 빨강
 
 ```
-docker build -t esports-ui .
-docker run --rm --name esports-ui-dev --network esports_default -p 8080:8080 -v "$PWD":/app esports-ui
-# --network: api compose 네트워크에 붙어 http://api:8000 으로 호출 (api 를 먼저 띄울 것)
+cd ../esports-api && docker compose up --build   # ui 도 api compose 의 ui 서비스로 같이 뜬다 → http://localhost:8000
 ```
+- ui 만 따로 띄울 때: `docker run --rm --network esports_default -p 8080:8080 -v "$PWD":/app esports-ui` (api compose 네트워크에서 http://api:8000 호출)
 
 ## 규칙 요약
 - 데이터는 api 에서만 읽는다. ui 에 목업 JSON 을 두지 않는다

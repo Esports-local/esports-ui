@@ -3,6 +3,7 @@
 LoL 중계 번역 실험의 화면 (Django 템플릿). [esports-api](https://github.com/Esports-local/esports-api)를 호출해서 보여 준다.
 
 - 계획·실험 조건: [esports-analyzer/docs/PLAN.md](https://github.com/Esports-local/esports-analyzer/blob/main/docs/PLAN.md)
+- 함께 쓰는 레포: [esports-api](https://github.com/Esports-local/esports-api) (데이터) · [esports-analyzer](https://github.com/Esports-local/esports-analyzer) (분석)
 
 ## 화면
 | 주소 | 내용 |
@@ -14,9 +15,15 @@ LoL 중계 번역 실험의 화면 (Django 템플릿). [esports-api](https://git
 | `/games/<id>/?tab=json` | 분석 단계 결과 원본 |
 
 ## 실행
-api를 먼저 띄운 뒤 (`esports-api`에서 `docker compose up`):
+esports-api 의 compose 에 `ui` 서비스로 들어 있어서 api·analyzer 와 같이 뜬다:
+```
+cd ../esports-api && docker compose up --build
+```
+브라우저에서 **http://localhost:8000** (api 는 :8002, analyzer 는 :8001).
+
+ui 만 따로 띄우려면 (api compose 가 떠 있어야 함):
 ```
 docker build -t esports-ui .
-docker run --rm --network esports_default -p 8080:8080 -v "$PWD":/app esports-ui
+docker run --rm --network esports_default -p 8080:8080 -v "$PWD":/app esports-ui   # → http://localhost:8080
 ```
-http://localhost:8080 . api 주소는 `API_URL` 환경변수 (기본 `http://api:8000`).
+api 주소는 `API_URL` 환경변수 (기본 `http://api:8000`, compose 네트워크 안의 주소).
