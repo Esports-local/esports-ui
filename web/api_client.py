@@ -73,3 +73,33 @@ def save_line_review(episode_id, scene_id, index, verdict, text=None):
     body = {"scene_id": scene_id, "index": index, "verdict": verdict, "text": text}
     review = _http("POST", f"/episodes/{episode_id}/reviews", json=body)["review"]
     return review and {"verdict": review["verdict"], "text": review["text"]}
+
+
+# ---------------------------------------------------------------- LoL 세트 영상 (spec_sheet_lol)
+
+
+def list_games():
+    """GET /games"""
+    return _http("GET", "/games")
+
+
+def get_game(game_id):
+    """GET /games/{id} — 단계 상태, 경기 정보(진영별 선수) 포함"""
+    return _http("GET", f"/games/{game_id}")
+
+
+def get_game_lines(game_id, from_sec=None, to_sec=None):
+    """GET /games/{id}/lines — 대사 + 그 시점 화면 정보 + 조건별 번역"""
+    params = {k: v for k, v in (("from_sec", from_sec), ("to_sec", to_sec)) if v is not None}
+    return _http("GET", f"/games/{game_id}/lines", params=params)
+
+
+def get_game_screen(game_id, tag=None, min_samples=2):
+    """GET /games/{id}/screen — 화면 OCR 구간"""
+    params = {"min_samples": min_samples, **({"tag": tag} if tag else {})}
+    return _http("GET", f"/games/{game_id}/screen", params=params)
+
+
+def get_game_analysis(game_id, stage):
+    """GET /games/{id}/analysis?stage= — 단계 결과 원본"""
+    return _http("GET", f"/games/{game_id}/analysis", params={"stage": stage})

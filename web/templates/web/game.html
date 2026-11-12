@@ -1,0 +1,115 @@
+{% extends "web/base.html" %}
+{% load vod %}
+{% block title %}{{ game.title }} · LoL 중계 번역{% endblock %}
+{% block bar %}
+<span class="crumb">{{ game.title }}</span>
+<nav class="tabs" aria-label="보기">
+  {% for key, label in tabs %}<a href="?tab={{ key }}"{% if tab == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+</nav>
+{% endblock %}
+{% block content %}
+<main class="narrow wide">
+  <section class="game-head">
+    <div class="card">
+      {% with m=game.match %}
+      {% if m %}
+      <p class="dim small">{{ m.tournament }} · {{ m.stage }} · {{ m.name }} · {{ m.game }}세트</p>
+      <h1 class="page-title"><span class="side-blue">{{ m.blue.team|default:"?" }}</span> vs <span class="side-red">{{ m.red.team|default:"?" }}</span></h1>
+      <p class="dim small">경기 스코어 {% for team, score in m.score.items %}{{ team }} {{ score }}{% if not forloop.last %} : {% endif %}{% endfor %}
+        {% if m.date %} · {{ m.date|slice:":10" }} (UTC){% endif %}</p>
+      <p class="links">
+        {% if m.video_url %}<a class="link" href="{{ m.video_url }}" target="_blank" rel="noopener">이 세트 전체 영상</a>{% endif %}
+        <a class="link" href="{{ m.source_url }}" target="_blank" rel="noopener">op.gg 경기</a>
+      </p>
+      {% else %}
+      <h1 class="page-title">{{ game.title }}</h1>
+      <p class="dim small">경기 정보가 연결되지 않았어요.</p>
+      {% endif %}
+      {% endwith %}
+      <ul class="stages">
+        {% for s in game.stages %}
+        <li class="is-{{ s.status }}"><span>{{ s.label }}</span>{% if s.elapsed_sec %}<em class="mono">{{ s.elapsed_sec|floatformat:0 }}초</em>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% if roster %}
+    <table class="table roster">
+      <thead><tr><th></th><th class="side-blue">{{ game.match.blue.team }} (블루)</th><th class="side-red">{{ game.match.red.team }} (레드)</th></tr></thead>
+      <tbody>
+        {% for r in roster %}
+        <tr>
+          <td class="dim">{{ r.role }}</td>
+          <td><strong>{{ r.blue.name|default:"-" }}</strong> <span class="dim">{{ r.blue.champion_ko|default:"" }}</span></td>
+          <td><strong>{{ r.red.name|default:"-" }}</strong> <span class="dim">{{ r.red.champion_ko|default:"" }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <caption class="dim small">선수 이름은 화면 OCR로 읽은 값이에요. 챔피언은 아직 비어 있어요.</caption>
+    </table>
+    {% endif %}
+  </section>
+
+  {% if tab_error %}
+  <p class="notice is-error">{{ tab_error }}</p>
+  {% elif tab == "lines" %}
+  <div class="toolbar">
+    <span class="dim">대사 {{ lines|length }}줄{% if n_translated %} · 번역 {{ n_translated }}줄{% endif %}</span>
+    {% if n_translated %}
+    <span class="tabs small-tabs">
+      <a href="?tab=lines"{% if only != "translated" %} aria-current="page"{% endif %}>전체</a>
+      <a href="?tab=lines&only=translated"{% if only == "translated" %} aria-current="page"{% endif %}>번역한 대사만</a>
+    </span>
+    {% endif %}
+  </div>
+  <table class="table lines">
+    <thead>
+      <tr><th class="mono">영상</th><th class="mono">게임</th><th>킬</th><th>받아쓴 원문</th>
+        {% if show_translations %}{% for key, label in conditions %}<th>{{ label }}</th>{% endfor %}{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td class="mono dim">{{ line.start_sec|tc }}</td>
+        <td class="mono">{{ line.screen.game_time|default:"-" }}</td>
+        <td class="mono nowrap">{% if line.screen.team_kills %}<span class="side-blue">{{ line.screen.team_kills.blue|default:"?" }}</span>:<span class="side-red">{{ line.screen.team_kills.red|default:"?" }}</span>{% else %}<span class="dim">-</span>{% endif %}</td>
+        <td class="src">{{ line.text }}</td>
+        {% if show_translations %}
+        {% for key, label in conditions %}<td class="tr">{{ line.translations|get:key|default:"" }}</td>{% endfor %}
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% elif tab == "screen" %}
+  <div class="toolbar">
+    <span class="tabs small-tabs">
+      {% for key, label in screen_tags %}<a href="?tab=screen&tag={{ key }}"{% if tag == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    </span>
+    <span class="dim">{{ screen.runs|length }}개 구간 · 1초에 {{ screen.sample_fps }}장 · 2장 미만 구간은 뺐어요</span>
+  </div>
+  <table class="table">
+    <thead><tr><th>영역</th><th>값</th><th class="mono">시작</th><th class="mono">끝</th><th class="right">길이</th><th class="right">신뢰도</th><th class="right">장수</th></tr></thead>
+    <tbody>
+      {% for r in screen.runs %}
+      <tr>
+        <td class="{% if r.slot|slice:':4' == 'blue' %}side-blue{% elif r.slot|slice:':3' == 'red' %}side-red{% endif %}">{{ r.slot|default:"-" }}</td>
+        <td class="mono"><strong>{{ r.text }}</strong></td>
+        <td class="mono dim">{{ r.start_sec|tc }}</td>
+        <td class="mono dim">{{ r.end_sec|tc }}</td>
+        <td class="right mono">{{ r.dur|floatformat:0 }}초</td>
+        <td class="right mono">{{ r.conf|floatformat:2 }}</td>
+        <td class="right mono">{{ r.samples }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="toolbar">
+    <span class="tabs small-tabs">
+      {% for s in json_stages %}<a href="?tab=json&stage={{ s }}"{% if stage == s %} aria-current="page"{% endif %}>{{ s }}</a>{% endfor %}
+    </span>
+  </div>
+  <pre class="json">{{ raw }}</pre>
+  {% endif %}
+</main>
+{% endblock %}

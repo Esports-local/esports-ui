@@ -1,0 +1,26 @@
+{% extends "web/base.html" %}
+{% load vod %}
+{% block content %}
+<main class="narrow">
+  <h1 class="page-title">세트 영상</h1>
+  <p class="dim">중계 녹화본 하나가 세트 하나예요. 해설 언어가 다르면 따로 있어요.</p>
+  {% if games %}
+  <table class="table">
+    <thead><tr><th>영상</th><th>해설</th><th>블루 vs 레드</th><th class="right">길이</th><th>상태</th></tr></thead>
+    <tbody>
+      {% for g in games %}
+      <tr>
+        <td><a class="row-main" href="{% url 'game' g.id %}">{{ g.title }}</a></td>
+        <td>{% if g.language == "ko" %}한국어{% elif g.language == "en" %}영어{% else %}{{ g.language }}{% endif %}</td>
+        <td>{% if g.teams %}<span class="side-blue">{{ g.teams.blue }}</span> vs <span class="side-red">{{ g.teams.red }}</span>{% else %}<span class="dim">-</span>{% endif %}</td>
+        <td class="right mono">{{ g.duration_sec|tc }}</td>
+        <td><span class="status is-{{ g.analyze_status }}">{{ g.status_label }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="notice">등록된 영상이 없습니다. api 레포에서 <code>python manage.py import_outputs</code>로 분석 결과를 넣으세요.</p>
+  {% endif %}
+</main>
+{% endblock %}

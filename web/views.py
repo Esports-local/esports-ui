@@ -171,3 +171,79 @@ def review_line(request, episode_id, scene_id, index):
     except ApiError as e:  # 대사 없음(404)·고친 대사 누락(400) 검사는 api가 한다
         return JsonResponse({"error": e.message}, status=e.status)
     return JsonResponse({"review": review})
+
+
+# ---------------------------------------------------------------- LoL 세트 영상
+
+GAME_STATUS_LABELS = {"pending": "분석 전", "running": "분석 중", "done": "분석 완료", "failed": "실패"}
+STAGE_LABELS = {"preprocess": "전처리", "segments": "화면 전환", "hls": "재생용 변환", "roi_ocr": "화면 OCR",
+                "asr": "받아쓰기", "translate": "번역", "evaluate": "평가"}
+ROLE_LABELS = {"top": "탑", "jungle": "정글", "mid": "미드", "bot": "원딜", "support": "서포터"}
+SCREEN_TAGS = [("team_kills", "팀 킬"), ("kda", "KDA"), ("gold", "골드"), ("gold_diff", "골드 차이"),
+               ("towers", "타워"), ("game_time", "게임 시간"), ("player_name", "선수 이름"), ("team", "팀")]
+CONDITIONS = [("A", "A 대사만"), ("B", "B + 화면 OCR"), ("C", "C + 영상 프레임")]
+JSON_STAGES = ["asr", "roi_ocr", "translate", "preprocess"]
+GAME_TABS = [("lines", "대사·번역"), ("screen", "화면 OCR"), ("json", "원본 JSON")]
+
+
+def games(request):
+    try:
+        items = api.list_games()
+    except ApiError as e:
+        return _error(request, e)
+    for g in items:
+        g["status_label"] = GAME_STATUS_LABELS.get(g["analyze_status"], g["analyze_status"])
+    return render(request, "web/games.html", {"games": items})
+
+
+def _roster(match):
+    """경기 정보 → 포지션별 [역할, 블루 선수, 레드 선수] 행."""
+    if not match:
+        return []
+    rows = []
+    for role, label in ROLE_LABELS.items():
+        blue = match["blue"]["players"].get(role)
+        red = match["red"]["players"].get(role)
+        if blue or red:
+            rows.append({"role": label, "blue": blue, "red": red})
+    return rows
+
+
+def game_detail(request, game_id):
+    tab = request.GET.get("tab", "lines")
+    if tab not in dict(GAME_TABS):
+        tab = "lines"
+    try:
+        game = api.get_game(game_id)
+    except ApiError as e:
+        return _error(request, e)
+    for s in game["stages"]:
+        s["label"] = STAGE_LABELS.get(s["stage"], s["stage"])
+    ctx = {"game": game, "tab": tab, "tabs": GAME_TABS, "roster": _roster(game["match"]),
+           "status_label": GAME_STATUS_LABELS.get(game["analyze_status"], game["analyze_status"])}
+    try:
+        if tab == "lines":
+            only = request.GET.get("only", "")
+            lines = api.get_game_lines(game_id)
+            n_translated = sum(1 for line in lines if line["translations"])
+            if only == "translated":
+                lines = [line for line in lines if line["translations"]]
+            ctx.update(lines=lines, only=only, n_translated=n_translated, conditions=CONDITIONS,
+                       show_translations=n_translated > 0)
+        elif tab == "screen":
+            tag = request.GET.get("tag", "team_kills")
+            if tag not in dict(SCREEN_TAGS):
+                tag = "team_kills"
+            screen = api.get_game_screen(game_id, tag=tag)
+            for r in screen["runs"]:
+                r["dur"] = r["end_sec"] - r["start_sec"]
+            ctx.update(screen=screen, tag=tag, screen_tags=SCREEN_TAGS)
+        else:
+            stage = request.GET.get("stage", "asr")
+            if stage not in JSON_STAGES:
+                stage = "asr"
+            ctx.update(stage=stage, json_stages=JSON_STAGES,
+                       raw=json.dumps(api.get_game_analysis(game_id, stage), ensure_ascii=False, indent=1))
+    except ApiError as e:
+        ctx["tab_error"] = e.message
+    return render(request, "web/game.html", ctx)
