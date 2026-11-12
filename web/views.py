@@ -1,4 +1,8 @@
 import json
+import re
+
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -181,7 +185,7 @@ STAGE_LABELS = {"preprocess": "전처리", "segments": "화면 전환", "hls": "
 ROLE_LABELS = {"top": "탑", "jungle": "정글", "mid": "미드", "bot": "원딜", "support": "서포터"}
 SCREEN_TAGS = [("team_kills", "팀 킬"), ("kda", "KDA"), ("gold", "골드"), ("gold_diff", "골드 차이"),
                ("towers", "타워"), ("game_time", "게임 시간"), ("player_name", "선수 이름"), ("team", "팀")]
-CONDITIONS = [("A", "A 대사만"), ("B", "B + 화면 OCR"), ("C", "C + 영상 프레임")]
+CONDITIONS = [("A", "대사만"), ("B", "+ 화면 OCR"), ("C", "+ 영상 프레임")]
 JSON_STAGES = ["asr", "roi_ocr", "translate", "preprocess"]
 GAME_TABS = [("lines", "대사·번역"), ("screen", "화면 OCR"), ("json", "원본 JSON")]
 
@@ -209,6 +213,40 @@ def _roster(match):
     return rows
 
 
+def _known_names(match):
+    """경기 정보의 선수·팀 이름 (번역문에서 형광펜으로 표시할 것)."""
+    if not match:
+        return []
+    names = {match[side].get("team") for side in ("blue", "red")}
+    for side in ("blue", "red"):
+        for p in match[side]["players"].values():
+            names.update({p.get("name"), p.get("champion")})
+    return sorted((n for n in names if n), key=len, reverse=True)
+
+
+def _highlight(text, names):
+    """이름을 <mark> 로 감싼다. 대소문자까지 같을 때만 (on, knight 같은 일반 단어와 구분), 단어 경계 기준."""
+    out = escape(text)
+    if names:
+        pattern = re.compile(r"\b(" + "|".join(re.escape(escape(n)) for n in names) + r")\b")
+        out = pattern.sub(r"<mark>\1</mark>", out)
+    return mark_safe(out)
+
+
+def _translation_rows(line, names):
+    """대사 하나의 [{key, label, html, same_as_a}] (번역이 없으면 빈 목록)."""
+    trs = line.get("translations") or {}
+    base = trs.get("A")
+    rows = []
+    for key, label in CONDITIONS:
+        text = trs.get(key)
+        if text is None:
+            continue
+        rows.append({"key": key, "label": label, "html": _highlight(text, names),
+                     "same_as_a": key != "A" and text == base})
+    return rows
+
+
 def game_detail(request, game_id):
     tab = request.GET.get("tab", "lines")
     if tab not in dict(GAME_TABS):
@@ -228,8 +266,10 @@ def game_detail(request, game_id):
             n_translated = sum(1 for line in lines if line["translations"])
             if only == "translated":
                 lines = [line for line in lines if line["translations"]]
-            ctx.update(lines=lines, only=only, n_translated=n_translated, conditions=CONDITIONS,
-                       show_translations=n_translated > 0)
+            names = _known_names(game["match"])
+            for line in lines:
+                line["rows"] = _translation_rows(line, names)
+            ctx.update(lines=lines, only=only, n_translated=n_translated, conditions=CONDITIONS)
         elif tab == "screen":
             tag = request.GET.get("tag", "team_kills")
             if tag not in dict(SCREEN_TAGS):
