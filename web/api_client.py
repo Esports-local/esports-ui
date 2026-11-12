@@ -29,54 +29,7 @@ def _http(method, path, timeout=10, **kwargs):
     return resp.json()
 
 
-# ---------------------------------------------------------------- 확정 스펙
-
-
-def list_series():
-    """GET /series"""
-    return _http("GET", "/series")
-
-
-def get_series(series_id):
-    """GET /series/{id} — 회차 목록, 등장인물 포함"""
-    return _http("GET", f"/series/{series_id}")
-
-
-def get_episode(episode_id):
-    """GET /episodes/{id}"""
-    return _http("GET", f"/episodes/{episode_id}")
-
-
-def start_predict(series_id, target):
-    """POST /series/{id}/predict"""
-    return _http("POST", f"/series/{series_id}/predict", json={"target": target})
-
-
-def get_predict(series_id, target):
-    """GET /series/{id}/predict?target="""
-    return _http("GET", f"/series/{series_id}/predict", params={"target": target})
-
-
-def get_analysis(episode_id):
-    """GET /episodes/{id}/analysis — main analysis/episode.json 원본 (scenes[].start_sec, lines …)"""
-    return _http("GET", f"/episodes/{episode_id}/analysis")
-
-
-def get_line_reviews(episode_id):
-    """GET /episodes/{id}/reviews → {"<scene_id>:<index>": {"verdict", "text"}}"""
-    data = _http("GET", f"/episodes/{episode_id}/reviews")
-    return {f"{r['scene_id']}:{r['index']}": {"verdict": r["verdict"], "text": r["text"]} for r in data["items"]}
-
-
-def save_line_review(episode_id, scene_id, index, verdict, text=None):
-    """POST /episodes/{id}/reviews. verdict: ok | wrong | fixed | clear. 저장된 판정(clear면 None)"""
-    body = {"scene_id": scene_id, "index": index, "verdict": verdict, "text": text}
-    review = _http("POST", f"/episodes/{episode_id}/reviews", json=body)["review"]
-    return review and {"verdict": review["verdict"], "text": review["text"]}
-
-
 # ---------------------------------------------------------------- LoL 세트 영상 (spec_sheet_lol)
-
 
 def list_games():
     """GET /games"""

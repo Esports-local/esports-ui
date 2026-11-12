@@ -2,7 +2,7 @@
 
 > 프로젝트 전체 구성과 결정 사항은 **`../esports-analyzer/docs/PLAN.md`가 기준**이다.
 > **ui → api 스펙은 구글 스펙 시트 spec_sheet_lol이 기준** (링크는 PLAN.md 6장). 스펙에 없는 호출이 필요하면 먼저 사용자에게 확인한다.
-> 드라마 스토리 예측 버전 화면은 `drama` 브랜치에 있다. main 에도 `/drama/` 아래 남아 있다.
+> 드라마 스토리 예측 버전 화면은 `drama` 브랜치에만 있다. main 은 LoL 화면만.
 
 ## 이 레포의 역할
 간단한 웹 화면. 자체 DB 없이 api 를 HTTP로 호출해 렌더링한다 (`API_URL`, 기본 `http://api:8000`).
@@ -21,7 +21,7 @@ Django 템플릿 위주, 자바스크립트는 최소로.
 
 ## 구조
 - api 호출은 `web/api_client.py`에만
-- `web/views.py`: 화면별 뷰 (위쪽은 드라마 버전, 아래 "LoL 세트 영상" 부분이 지금 화면)
+- `web/views.py`: 화면별 뷰
 - 템플릿 `web/templates/web/` (`games.html`, `game.html`), 공통 필터 `web/templatetags/vod.py` (`tc` 초 → mm:ss, `get`)
 - 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 블루 진영 = 파랑, 레드 진영 = 빨강
 
