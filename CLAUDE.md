@@ -22,7 +22,7 @@ Django 템플릿 위주, 자바스크립트는 최소로.
 ## 구조
 - api 호출은 `web/api_client.py`에만
 - `web/views.py`: 화면별 뷰
-- 템플릿 `web/templates/web/` (`games.html`, `game.html`), 공통 필터 `web/templatetags/vod.py` (`tc` 초 → mm:ss, `get`)
+- 템플릿 `web/templates/web/` (`games.html`, `game.html`), 공통 필터 `web/templatetags/fmt.py` (`tc` 초 → mm:ss, `get`)
 - 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 블루 진영 = 파랑, 레드 진영 = 빨강
 
 ```

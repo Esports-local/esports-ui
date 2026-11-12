@@ -1,5 +1,5 @@
 {% extends "web/base.html" %}
-{% load vod %}
+{% load fmt %}
 {% block title %}{{ game.title }} · LoL 중계 번역{% endblock %}
 {% block scripts %}{% if running %}<meta http-equiv="refresh" content="10">{% endif %}{% endblock %}
 {% block bar %}
@@ -104,7 +104,7 @@
   <div class="toolbar">
     <span class="dim">대사 {{ lines|length }}줄{% if n_translated %} · 번역 {{ n_translated }}줄{% endif %}</span>
     {% if n_translated %}
-    <span class="tabs small-tabs">
+    <span class="tabs">
       <a href="?tab=lines"{% if only != "translated" %} aria-current="page"{% endif %}>전체</a>
       <a href="?tab=lines&only=translated"{% if only == "translated" %} aria-current="page"{% endif %}>번역한 대사만</a>
     </span>
@@ -136,7 +136,7 @@
   </ol>
   {% elif tab == "screen" %}
   <div class="toolbar">
-    <span class="tabs small-tabs">
+    <span class="tabs">
       {% for key, label in screen_tags %}<a href="?tab=screen&tag={{ key }}"{% if tag == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
     </span>
     <span class="dim">{{ screen.runs|length }}개 구간 · 1초에 {{ screen.sample_fps }}장 · 2장 미만 구간은 뺐어요</span>
@@ -159,7 +159,7 @@
   </table>
   {% else %}
   <div class="toolbar">
-    <span class="tabs small-tabs">
+    <span class="tabs">
       {% for s in json_stages %}<a href="?tab=json&stage={{ s }}"{% if stage == s %} aria-current="page"{% endif %}>{{ s }}</a>{% endfor %}
     </span>
   </div>

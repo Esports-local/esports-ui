@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{% static 'web/app.css' %}">
   {% block scripts %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<body class="{% block body_class %}{% endblock %}">
   {% block header %}
   <header class="bar">
     <a class="brand" href="{% url 'home' %}">LoL 중계 <em>번역</em></a>
