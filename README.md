@@ -1,8 +1,8 @@
 # esports-ui
 
-LoL 중계 번역 실험의 화면 (Django 템플릿). [esports-api](https://github.com/djkim0704/esports-api)를 호출해서 보여 준다.
+LoL 중계 번역 실험의 화면 (Django 템플릿). [esports-api](https://github.com/Esports-local/esports-api)를 호출해서 보여 준다.
 
-- 계획·실험 조건: [esports-analyzer/docs/PLAN.md](https://github.com/djkim0704/esports-analyzer/blob/main/docs/PLAN.md)
+- 계획·실험 조건: [esports-analyzer/docs/PLAN.md](https://github.com/Esports-local/esports-analyzer/blob/main/docs/PLAN.md)
 
 ## 화면
 | 주소 | 내용 |
