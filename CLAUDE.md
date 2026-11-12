@@ -1,41 +1,38 @@
 # esports-ui — 화면 (Django)
 
-> 프로젝트 전체 구성, 결정 사항, **API 스펙(요청/응답 예시 포함)은 `../PLAN.md`가 기준**이다.
-> 작업 전에 반드시 읽고, 스펙에 없는 호출이 필요하면 먼저 사용자에게 확인한다. 스펙을 이 파일에 복사하지 않는다.
+> 프로젝트 전체 구성과 결정 사항은 **`../esports-analyzer/docs/PLAN.md`가 기준**이다.
+> **ui → api 스펙은 구글 스펙 시트 spec_sheet_lol이 기준** (링크는 PLAN.md 6장). 스펙에 없는 호출이 필요하면 먼저 사용자에게 확인한다.
+> 드라마 스토리 예측 버전 화면은 `drama` 브랜치에 있다. main 에도 `/drama/` 아래 남아 있다.
 
 ## 이 레포의 역할
-간단한 웹 UI. 자체 DB 모델 없이 api를 HTTP로 호출해 렌더링한다 (`API_URL` 환경변수).
-Django 템플릿 + htmx 수준으로 가볍게. 영상은 hls.js로 MinIO에서 직접 재생.
+간단한 웹 화면. 자체 DB 없이 api 를 HTTP로 호출해 렌더링한다 (`API_URL`, 기본 `http://api:8000`).
+Django 템플릿 위주, 자바스크립트는 최소로.
 
-## 현재 상태
-`web/` 앱에 화면 1~4(드라마 → 예측 → 결과, 회차 검수 + 분석 JSON). 데이터는 전부 api에서 읽는다 (ui에 JSON 저장 안 함). `requirements.txt`: django, requests.
-settings의 SECRET_KEY/DEBUG/ALLOWED_HOSTS는 환경변수(`DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`)로 받음.
-- api 호출은 `web/api_client.py`에만. 주소는 `API_URL` (기본 `http://api:8000`)
-- 회차 검수는 api 6~8번 호출 사용: 분석 결과 `GET /episodes/{id}/analysis`, 검수 목록 `GET /episodes/{id}/reviews`, 판정 저장 `POST /episodes/{id}/reviews`. 대사 존재·고친 대사 검사는 api가 한다
-- 회차 검수(`episode.html` + `web/static/web/studio.js`)는 영상 편집기형 단일 화면: 장면 목록 · 영상 · 인스펙터 + 타임라인(장면 트랙, 선택 장면의 대사 레인). 페이지에 심은 JSON으로 브라우저에서 그리고, 판정 POST는 JSON 응답
-- 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 근거=형광펜 노랑, 반대 근거=빨간 밑줄, 검수 맞음/수정/틀림=청/노랑/빨강
+## 화면
+- `/` 세트 영상 목록 (`GET /games`): 해설 언어, 블루 vs 레드, 길이, 분석 상태
+- `/games/<id>/` 세트 화면 (`GET /games/{id}`): 경기 정보(대회·스코어·영상 링크), 단계 상태, 포지션별 선수
+  - `?tab=lines` 대사·번역 (`/lines`): 영상 시간, 게임 시간, 킬, 받아쓴 원문(ASR 한국어), 조건 A/B/C 영어 번역. `only=translated`
+  - `?tab=screen&tag=` 화면 OCR 구간 (`/screen`)
+  - `?tab=json&stage=` 단계 결과 원본 (`/analysis`)
+- 할 것: 케이스셋 검수 화면 (`/cases`), 영상 재생(hls)
+
+## 구조
+- api 호출은 `web/api_client.py`에만
+- `web/views.py`: 화면별 뷰 (위쪽은 드라마 버전, 아래 "LoL 세트 영상" 부분이 지금 화면)
+- 템플릿 `web/templates/web/` (`games.html`, `game.html`), 공통 필터 `web/templatetags/vod.py` (`tc` 초 → mm:ss, `get`)
+- 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 블루 진영 = 파랑, 레드 진영 = 빨강
+
 ```
 docker build -t esports-ui .
-docker run --rm --network esports_default -p 8080:8080 -v "$PWD":/app esports-ui   # -v: 코드 수정 시 자동 reload
-# --network: api compose 네트워크에 붙어 http://api:8000 으로 호출 (api를 먼저 띄울 것)
+docker run --rm --name esports-ui-dev --network esports_default -p 8080:8080 -v "$PWD":/app esports-ui
+# --network: api compose 네트워크에 붙어 http://api:8000 으로 호출 (api 를 먼저 띄울 것)
 ```
 
-## 화면 (MVP)
-메인 흐름은 PLAN.md 5장 "화면 흐름": 드라마 선택 → 예측할 회차(`target`) 선택 → 예측 시작 → 결과.
-업로드 화면은 만들지 않는다 (영상은 관리 명령으로 넣음).
-
-1. 드라마 선택 → 회차 목록 + 등장인물 (크롤링 데이터, 조회만)
-2. 예측할 회차 선택 (앞 회차가 모두 분석 완료인 회차만), 예측 시작 + 상태 폴링
-3. 예측 결과: 예측 카드 + 확신도 + 근거/반대 근거 클릭 → 해당 회차 영상의 `currentTime = start`
-4. 회차 타임라인: Segment 목록 + 대사, 분석 진행 상태
-5. 화자 매핑: S1, S2… → 등장인물 선택
-6. 창작 아이디어
-
-## 작업 순서
-데이터는 api에서만 읽는다. ui에 목업 JSON을 두지 않는다 (api가 떠 있어야 화면이 나옴).
-api 호출은 `web/api_client.py` 한 모듈에 모은다.
-
-## 규칙 요약 (상세는 PLAN.md)
-- api 호출은 GET/POST만
-- 시간은 초 단위 float, 장면 참조는 `{segment_id, start, end}`
+## 규칙 요약
+- 데이터는 api 에서만 읽는다. ui 에 목업 JSON 을 두지 않는다
+- api 호출은 GET/POST만, 시간은 초(float)
 - 주소는 환경변수, 패키지는 `requirements.txt`에 `==` 고정 후 이미지 재빌드
+
+## 커밋 규칙
+- 메시지는 `종류/내용` 한 줄 (`feat/` `refactor/` `fix/` `docs/` `chore/`)
+- 작성자는 사용자 본인만. Claude 를 `Co-Authored-By` 등 공동 작성자로 넣지 않는다
