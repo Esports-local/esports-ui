@@ -101,36 +101,68 @@
   {% if tab_error %}
   <p class="notice is-error">{{ tab_error }}</p>
   {% elif tab == "lines" %}
-  <div class="toolbar">
-    <span class="dim">대사 {{ lines|length }}줄{% if n_translated %} · 번역 {{ n_translated }}줄{% endif %}</span>
-    {% if n_translated %}
+  <div class="review-head card">
+    <div class="review-progress">
+      <div class="review-count"><span class="dim">검수</span> <b>{{ counts.reviewed }}</b><span class="dim"> / {{ counts.all }}줄</span></div>
+      <progress max="{{ counts.all|default:1 }}" value="{{ counts.reviewed }}"></progress>
+      <div class="review-stats dim">고친 대사 <b class="ink">{{ counts.edited }}</b>{% if counts.translated %}<span class="sep"></span>번역 <b class="ink">{{ counts.translated }}</b>{% endif %}</div>
+    </div>
     <span class="tabs">
-      <a href="?tab=lines"{% if only != "translated" %} aria-current="page"{% endif %}>전체</a>
-      <a href="?tab=lines&only=translated"{% if only == "translated" %} aria-current="page"{% endif %}>번역한 대사만</a>
+      {% for key, label in line_filters %}<a href="?tab=lines{% if key %}&only={{ key }}{% endif %}"{% if only == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
     </span>
-    {% endif %}
   </div>
-  <p class="legend-line dim">
-    {% for key, label in conditions %}<span class="cond cond-{{ key }}">{{ key }}</span> {{ label }}{% if not forloop.last %} · {% endif %}{% endfor %}
-    · <mark>이름</mark> = 경기 정보의 선수·팀 이름
-  </p>
+  <ul class="legend dim">
+    <li><span class="ox is-o">O</span> 검수함</li>
+    <li><span class="ox">X</span> 미검수</li>
+    <li><del>지운 글자</del> <ins>고친 글자</ins></li>
+    {% for key, label in conditions %}<li><span class="cond cond-{{ key }}">{{ key }}</span> {{ label }}</li>{% endfor %}
+    <li><mark>이름</mark> 경기 정보의 선수·팀</li>
+  </ul>
+  <p class="legend-note dim">O/X 를 누르면 검수 상태가 바뀌어요. 고친 대사는 번역할 때 고친 문장으로 번역해요.</p>
+  {% if not lines %}<p class="notice">이 조건에 맞는 대사가 없어요.</p>{% endif %}
   <ol class="line-list">
     {% for line in lines %}
-    <li class="line-item{% if line.rows %} has-tr{% endif %}">
+    <li class="line-item{% if line.rows %} has-tr{% endif %}{% if line.reviewed %} is-reviewed{% endif %}" id="line-{{ line.id }}">
       <div class="line-meta mono">
-        <span>{{ line.start_sec|tc }}</span>
+        <span class="line-time">{{ line.start_sec|tc }}</span>
         <span class="dim">게임 {{ line.screen.game_time|default:"-" }}</span>
         {% if line.screen.team_kills %}<span><span class="side-blue">{{ line.screen.team_kills.blue|default:"?" }}</span> : <span class="side-red">{{ line.screen.team_kills.red|default:"?" }}</span></span>{% endif %}
       </div>
       <div class="line-body">
+        {% if line.fixed %}
+        <p class="line-src">{{ line.fixed_html }}</p>
+        <div class="line-asr"><span class="tag">ASR 원문</span><span>{{ line.asr_html }}</span></div>
+        {% else %}
         <p class="line-src">{{ line.text }}</p>
+        {% endif %}
+        <details class="line-edit">
+          <summary>{% if line.fixed %}다시 고치기{% else %}고치기{% endif %}</summary>
+          <form class="edit-box" method="post" action="{% url 'line_review' game.id line.id %}">
+            {% csrf_token %}<input type="hidden" name="only" value="{{ only }}"><input type="hidden" name="asr_text" value="{{ line.text }}">
+            <textarea name="text" rows="2" required>{{ line.fixed|default:line.text }}</textarea>
+            <div class="edit-actions">
+              <label><input type="checkbox" name="check" value="1" checked> 저장하면서 검수함(O)으로</label>
+              <span class="edit-buttons">
+                {% if line.fixed %}<button class="btn ghost" name="action" value="revert" formnovalidate>원문으로 되돌리기</button>{% endif %}
+                <button class="btn" name="action" value="save">저장</button>
+              </span>
+            </div>
+          </form>
+        </details>
+        {% if line.rows %}<div class="line-trs">{% endif %}
         {% for r in line.rows %}
         <p class="line-tr{% if r.same_as_a %} is-same{% endif %}">
           <span class="cond cond-{{ r.key }}" title="{{ r.label }}">{{ r.key }}</span>
           {% if r.same_as_a %}<span class="dim">A와 같음</span>{% else %}<span>{{ r.html }}</span>{% endif %}
         </p>
         {% endfor %}
+        {% if line.rows %}</div>{% endif %}
       </div>
+      <form class="line-mark" method="post" action="{% url 'line_review' game.id line.id %}">
+        {% csrf_token %}<input type="hidden" name="action" value="mark"><input type="hidden" name="only" value="{{ only }}">
+        <input type="hidden" name="reviewed" value="{% if line.reviewed %}0{% else %}1{% endif %}">
+        <button class="ox{% if line.reviewed %} is-o{% endif %}" aria-label="{% if line.reviewed %}검수함, 누르면 미검수로{% else %}미검수, 누르면 검수함으로{% endif %}" title="{% if line.reviewed %}검수함 (누르면 미검수로){% else %}미검수 (누르면 검수함으로){% endif %}">{% if line.reviewed %}O{% else %}X{% endif %}</button>
+      </form>
     </li>
     {% endfor %}
   </ol>

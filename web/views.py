@@ -1,3 +1,4 @@
+import difflib
 import json
 import re
 
@@ -26,6 +27,7 @@ SCREEN_TAGS = [("team_kills", "팀 킬"), ("kda", "KDA"), ("gold", "골드"), ("
 CONDITIONS = [("A", "대사만"), ("B", "+ 화면 OCR"), ("C", "+ 영상 프레임")]
 JSON_STAGES = ["asr", "roi_ocr", "translate", "preprocess"]
 GAME_TABS = [("lines", "대사·번역"), ("screen", "화면 OCR"), ("json", "원본 JSON")]
+LINE_FILTERS = [("", "전체"), ("unreviewed", "미검수 (X)"), ("edited", "고친 대사"), ("translated", "번역한 대사")]
 
 
 RUN_STAGES = [("preprocess", "전처리"), ("roi_ocr", "화면 OCR"), ("asr", "받아쓰기")]
@@ -135,6 +137,54 @@ def _translation_rows(line, names):
     return rows
 
 
+def _diff(before, after):
+    """(ASR 원문 html, 고친 문장 html). 지운 글자는 <del>, 넣은 글자는 <ins>."""
+    old, new = [], []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, before, after, autojunk=False).get_opcodes():
+        a, b = escape(before[i1:i2]), escape(after[j1:j2])
+        if op == "equal":
+            old.append(a)
+            new.append(b)
+            continue
+        if a:
+            old.append(f"<del>{a}</del>")
+        if b:
+            new.append(f"<ins>{b}</ins>")
+    return mark_safe("".join(old)), mark_safe("".join(new))
+
+
+def _filter_lines(lines, only):
+    if only == "unreviewed":
+        return [x for x in lines if not (x["review"] or {}).get("reviewed")]
+    if only == "edited":
+        return [x for x in lines if (x["review"] or {}).get("text")]
+    if only == "translated":
+        return [x for x in lines if x["translations"]]
+    return lines
+
+
+@require_POST
+def line_review(request, game_id, line_id):
+    """대사 검수 저장 → 같은 대사 위치로 돌아간다.
+
+    action: mark(검수 O/X 바꾸기) · save(고친 문장 저장, check 가 있으면 O 도) · revert(ASR 원문으로 되돌리기)
+    """
+    f = request.POST
+    action = f.get("action")
+    try:
+        if action == "mark":
+            api.review_line(game_id, line_id, reviewed=f.get("reviewed") == "1")
+        elif action == "save":
+            api.review_line(game_id, line_id, text=f.get("text", ""), reviewed=True if f.get("check") else None)
+        elif action == "revert":
+            api.review_line(game_id, line_id, text=f.get("asr_text", ""))
+        msg = None
+    except ApiError as e:
+        msg = e.message
+    query = {"tab": "lines", **({"only": f["only"]} if f.get("only") else {}), **({"msg": msg} if msg else {})}
+    return redirect(f"/games/{game_id}/?{urlencode(query)}#line-{line_id}")
+
+
 def game_detail(request, game_id):
     tab = request.GET.get("tab", "lines")
     if tab not in dict(GAME_TABS):
@@ -163,14 +213,23 @@ def game_detail(request, game_id):
     try:
         if tab == "lines":
             only = request.GET.get("only", "")
-            lines = api.get_game_lines(game_id)
-            n_translated = sum(1 for line in lines if line["translations"])
-            if only == "translated":
-                lines = [line for line in lines if line["translations"]]
+            if only not in dict(LINE_FILTERS):
+                only = ""
+            all_lines = api.get_game_lines(game_id)
+            counts = {"all": len(all_lines),
+                      "translated": sum(1 for x in all_lines if x["translations"]),
+                      "reviewed": sum(1 for x in all_lines if (x["review"] or {}).get("reviewed")),
+                      "edited": sum(1 for x in all_lines if (x["review"] or {}).get("text"))}
+            lines = _filter_lines(all_lines, only)
             names = _known_names(game["match"])
             for line in lines:
                 line["rows"] = _translation_rows(line, names)
-            ctx.update(lines=lines, only=only, n_translated=n_translated, conditions=CONDITIONS)
+                review = line["review"] or {}
+                line["reviewed"] = bool(review.get("reviewed"))
+                line["fixed"] = review.get("text")
+                if line["fixed"]:
+                    line["asr_html"], line["fixed_html"] = _diff(line["text"], line["fixed"])
+            ctx.update(lines=lines, only=only, counts=counts, line_filters=LINE_FILTERS, conditions=CONDITIONS)
         elif tab == "screen":
             tag = request.GET.get("tag", "team_kills")
             if tag not in dict(SCREEN_TAGS):

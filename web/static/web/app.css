@@ -121,6 +121,56 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cond-B { background: var(--blue); }
 .cond-C { background: #7B61FF; }
 .legend-line .cond { width: 18px; height: 18px; font-size: 10.5px; vertical-align: 1px; }
+/* 대사 검수: O/X, 고친 글자 비교 */
+.ink { color: var(--ink); }
+.review-head { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: space-between; margin: 12px 0 14px; padding: 16px 22px; }
+.review-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; flex: 1 1 320px; }
+.review-count { font-size: 13px; white-space: nowrap; }
+.review-count b { font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 1px; }
+.review-progress progress { flex: 1 1 140px; max-width: 260px; height: 8px; border: 0; border-radius: 99px; background: var(--line); overflow: hidden; appearance: none; }
+.review-progress progress::-webkit-progress-bar { background: var(--line); border-radius: 99px; }
+.review-progress progress::-webkit-progress-value { background: var(--blue); border-radius: 99px; }
+.review-progress progress::-moz-progress-bar { background: var(--blue); border-radius: 99px; }
+.review-stats { font-size: 12.5px; white-space: nowrap; }
+.review-stats .sep { display: inline-block; width: 1px; height: 10px; background: var(--rule); margin: 0 10px; }
+.review-head .tabs { margin-left: 0; }
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0; margin: 0 2px 4px; font-size: 12px; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend .cond { width: 18px; height: 18px; font-size: 10.5px; }
+.legend-note { font-size: 11.5px; margin: 0 2px 14px; }
+.line-item { grid-template-columns: 88px 1fr 34px; gap: 18px; padding: 16px 20px; }
+.line-item.has-tr { padding: 18px 20px; }
+.line-meta { gap: 3px; padding-top: 2px; }
+.line-time { font-weight: 600; color: var(--ink); }
+.line-src { line-height: 1.7; }
+.line-mark { align-self: start; }
+.ox { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--pencil); font: 800 13px var(--sans); cursor: pointer; padding: 0; transition: border-color .12s, color .12s; }
+.ox:hover { border-color: var(--blue); color: var(--blue); }
+.ox.is-o { background: var(--blue); border-color: var(--blue); color: #fff; }
+.legend .ox { width: 20px; height: 20px; border-radius: 6px; font-size: 10.5px; cursor: default; }
+.line-item.is-reviewed { box-shadow: inset 3px 0 0 var(--blue); }
+.line-asr { display: flex; gap: 8px; align-items: baseline; margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: var(--paper); font-size: 12.5px; color: var(--pencil); line-height: 1.6; }
+.line-asr .tag { flex: none; font-size: 10.5px; font-weight: 700; color: var(--ink2); background: var(--line); border-radius: 6px; padding: 1px 7px; }
+del { color: var(--red); background: var(--red-w); text-decoration: line-through; border-radius: 3px; padding: 0 1px; }
+ins { text-decoration: none; background: var(--blue-w); color: var(--blue-ink); font-weight: 700; border-radius: 3px; padding: 0 1px; }
+.line-edit { margin-top: 8px; }
+.line-edit summary { display: inline-block; list-style: none; font-size: 12px; font-weight: 600; color: var(--ink2); background: var(--line); border-radius: 8px; padding: 3px 10px; cursor: pointer; }
+.line-edit summary::-webkit-details-marker { display: none; }
+.line-edit summary:hover { color: var(--blue); }
+.line-edit[open] summary { color: var(--blue); background: var(--blue-w); }
+.edit-box { margin-top: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.edit-box textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; line-height: 1.6; border: 1.5px solid var(--rule); border-radius: 10px; padding: 9px 12px; background: var(--sheet); color: var(--ink); resize: vertical; }
+.edit-box textarea:focus { border-color: var(--blue); outline: none; }
+.edit-actions { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; margin-top: 10px; font-size: 12.5px; }
+.edit-actions label { display: inline-flex; gap: 6px; align-items: center; color: var(--ink2); }
+.edit-buttons { display: inline-flex; gap: 8px; }
+.line-trs { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .line-item { grid-template-columns: 1fr 34px; gap: 10px 14px; padding: 14px 16px; }
+  .line-meta { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
+  .line-body { grid-column: 1; }
+  .line-mark { grid-column: 2; grid-row: 2; }
+}
 mark { background: linear-gradient(transparent 45%, var(--marker) 45%, var(--marker) 90%, transparent 90%); color: inherit; padding: 0 1px; }
 
 /* 영상 추가·분석 실행 */

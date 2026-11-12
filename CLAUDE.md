@@ -14,7 +14,8 @@ Django 템플릿 위주, 자바스크립트는 최소로.
 - `/games/<id>/` 세트 화면 (`GET /games/{id}`): 경기 정보(대회·스코어·영상 링크), 단계 상태, 포지션별 선수
   - 분석 중이면 진행 단계·경과 시간 + 10초마다 새로고침, 중지 (`/cancel`)
   - 분석 다시 실행 (`/analyze`), 번역: 조건 고르기 → 예상 비용 (`/estimate` + 가정 가격) → 번역 시작
-  - `?tab=lines` 대사·번역 (`/lines`): 영상 시간, 게임 시간, 킬, 받아쓴 원문(ASR 한국어), 조건 A/B/C 영어 번역. `only=translated`
+  - `?tab=lines` 대사·번역 (`/lines`): 영상 시간, 게임 시간, 킬, 받아쓴 원문(ASR 한국어), 조건 A/B/C 영어 번역. `only=unreviewed|edited|translated`
+    - 대사 검수 (`/lines/{line_id}/review`): O/X 버튼(검수 여부), "고치기"로 문장 수정, 고친 대사는 ASR 원문과 글자 단위 비교(`<del>`/`<ins>`). 고친 문장으로 번역된다
   - `?tab=screen&tag=` 화면 OCR 구간 (`/screen`)
   - `?tab=json&stage=` 단계 결과 원본 (`/analysis`)
 - 할 것: 케이스셋 검수 화면 (`/cases`), 영상 재생(hls)

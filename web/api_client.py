@@ -47,6 +47,12 @@ def get_game_lines(game_id, from_sec=None, to_sec=None):
     return _http("GET", f"/games/{game_id}/lines", params=params)
 
 
+def review_line(game_id, line_id, text=None, reviewed=None):
+    """POST /games/{id}/lines/{line_id}/review — 고친 문장 / 검수 O(true)·X(false) 저장"""
+    body = {k: v for k, v in (("text", text), ("reviewed", reviewed)) if v is not None}
+    return _http("POST", f"/games/{game_id}/lines/{line_id}/review", json=body)
+
+
 def get_game_screen(game_id, tag=None, min_samples=2):
     """GET /games/{id}/screen — 화면 OCR 구간"""
     params = {"min_samples": min_samples, **({"tag": tag} if tag else {})}
