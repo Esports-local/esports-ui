@@ -14,10 +14,10 @@ class ApiError(Exception):
         self.status = status
 
 
-def _http(method, path, **kwargs):
+def _http(method, path, timeout=10, **kwargs):
     url = settings.API_URL.rstrip("/") + path
     try:
-        resp = requests.request(method, url, timeout=10, **kwargs)
+        resp = requests.request(method, url, timeout=timeout, **kwargs)
     except requests.RequestException as e:
         raise ApiError(f"api에 연결하지 못했습니다 ({settings.API_URL})", 502) from e
     if resp.status_code >= 400:
@@ -103,3 +103,29 @@ def get_game_screen(game_id, tag=None, min_samples=2):
 def get_game_analysis(game_id, stage):
     """GET /games/{id}/analysis?stage= — 단계 결과 원본"""
     return _http("GET", f"/games/{game_id}/analysis", params={"stage": stage})
+
+
+def list_sources():
+    """GET /sources — 원본 영상 목록 (1920x1080 만 selectable)"""
+    return _http("GET", "/sources", timeout=120)
+
+
+def create_game(body):
+    """POST /games — 영상 등록 + 분석 시작. body: {video, title, language, match, set, stages}"""
+    return _http("POST", "/games", json=body, timeout=60)
+
+
+def analyze_game(game_id, stages, conditions=None):
+    """POST /games/{id}/analyze — 단계 추가 실행 (번역이면 conditions)"""
+    body = {"stages": stages, **({"conditions": conditions} if conditions else {})}
+    return _http("POST", f"/games/{game_id}/analyze", json=body, timeout=60)
+
+
+def cancel_game(game_id):
+    """POST /games/{id}/cancel"""
+    return _http("POST", f"/games/{game_id}/cancel")
+
+
+def estimate_game(game_id, conditions):
+    """GET /games/{id}/estimate — 번역 예상 입력 토큰"""
+    return _http("GET", f"/games/{game_id}/estimate", params={"conditions": ",".join(conditions)}, timeout=120)

@@ -8,6 +8,7 @@ LoL 중계 번역 실험의 화면 (Django 템플릿). [esports-api](https://git
 | 주소 | 내용 |
 |---|---|
 | `/` | 세트 영상 목록 |
+| `/games/new/` | 영상 추가: vod 폴더에서 1920x1080 영상을 골라 분석 시작 |
 | `/games/<id>/?tab=lines` | 해설 대사(ASR 한국어)와 조건별 영어 번역 비교 (A 대사만 / B + 화면 OCR / C + 영상 프레임), 그 시점 게임 시간·킬 |
 | `/games/<id>/?tab=screen` | 화면 OCR 구간 (팀 킬, KDA, 골드, 타워, 게임 시간, 선수 이름) |
 | `/games/<id>/?tab=json` | 분석 단계 결과 원본 |

@@ -1,6 +1,7 @@
 {% extends "web/base.html" %}
 {% load vod %}
 {% block title %}{{ game.title }} · LoL 중계 번역{% endblock %}
+{% block scripts %}{% if running %}<meta http-equiv="refresh" content="10">{% endif %}{% endblock %}
 {% block bar %}
 <span class="crumb">{{ game.title }}</span>
 <nav class="tabs" aria-label="보기">
@@ -9,6 +10,18 @@
 {% endblock %}
 {% block content %}
 <main class="narrow wide">
+  {% if msg %}<p class="notice is-error">{{ msg }}</p>{% endif %}
+  {% if running %}
+  <div class="notice run-banner">
+    <strong>분석 중</strong> · {{ game.progress.label|default:"준비 중" }}
+    {% if game.progress.elapsed_sec %}<span class="mono dim">{{ game.progress.elapsed_sec|tc }} 경과</span>{% endif %}
+    <span class="dim small">({{ game.progress.stages|join:", " }}) · 10초마다 새로고침</span>
+    <form method="post" action="{% url 'game_action' game.id %}" class="inline">{% csrf_token %}
+      <button class="btn small ghost" name="action" value="cancel">중지</button></form>
+  </div>
+  {% elif game.error %}
+  <p class="notice is-error"><strong>분석 실패</strong> · {{ game.error|linebreaksbr }}</p>
+  {% endif %}
   <section class="game-head">
     <div class="card">
       {% with m=game.match %}
@@ -48,6 +61,42 @@
     </table>
     {% endif %}
   </section>
+
+  {% if not running and game.video %}
+  <section class="run-panel">
+    <form method="post" action="{% url 'game_action' game.id %}" class="card">
+      {% csrf_token %}
+      <h2>분석 다시 실행</h2>
+      <div class="checks">
+        {% for key, label in run_stages %}<label><input type="checkbox" name="stages" value="{{ key }}"{% if key not in done_stages %} checked{% endif %}> {{ label }}{% if key in done_stages %} <span class="dim">(완료)</span>{% endif %}</label>{% endfor %}
+      </div>
+      <button class="btn small" name="action" value="analyze">실행</button>
+    </form>
+    <div class="card">
+      <h2>번역 (Gemini)</h2>
+      {% if "asr" in done_stages %}
+      <form method="get" class="checks">
+        {% for key, label in conditions %}<label><input type="checkbox" name="cond" value="{{ key }}"{% if key in est_conds or not est_conds and key != "C" %} checked{% endif %}> <span class="cond cond-{{ key }}">{{ key }}</span> {{ label }}</label>{% endfor %}
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <button class="btn small ghost" type="submit" name="est" value="1">예상 비용 보기</button>
+      </form>
+      {% if estimate %}
+      <p class="estimate">대사 {{ estimate.lines }}줄 · 요청 <b>{{ estimate.requests }}</b>번 · 입력 약 {{ cost.tokens_in|floatformat:0 }} 토큰 + 출력 약 {{ cost.tokens_out|floatformat:0 }} 토큰
+        → <b>약 {{ cost.usd|floatformat:2 }}달러 ({{ cost.krw|floatformat:0 }}원)</b></p>
+      <p class="dim small">입력은 Gemini로 잰 값({{ estimate.sampled_lines }}줄 표본), 출력·가격은 가정(입력 100만 토큰당 0.5달러, 출력 3달러). 이미 번역한 대사는 빠져요.</p>
+      {% if estimate.requests %}
+      <form method="post" action="{% url 'game_action' game.id %}">{% csrf_token %}
+        {% for c in est_conds %}<input type="hidden" name="conditions" value="{{ c }}">{% endfor %}
+        <button class="btn small" name="action" value="translate">번역 시작 ({{ est_conds|join:"·" }})</button>
+      </form>
+      {% else %}<p class="dim small">번역할 대사가 없어요 (모두 번역됨).</p>{% endif %}
+      {% endif %}
+      {% else %}
+      <p class="dim small">받아쓰기(asr)가 끝나야 번역할 수 있어요.</p>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
 
   {% if tab_error %}
   <p class="notice is-error">{{ tab_error }}</p>

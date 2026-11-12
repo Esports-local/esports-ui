@@ -2,7 +2,7 @@
 {% load vod %}
 {% block content %}
 <main class="narrow">
-  <h1 class="page-title">세트 영상</h1>
+  <div class="title-row"><h1 class="page-title">세트 영상</h1><a class="btn" href="{% url 'game_new' %}">영상 추가</a></div>
   <p class="dim">중계 녹화본 하나가 세트 하나예요. 해설 언어가 다르면 따로 있어요.</p>
   {% if games %}
   <table class="table">
@@ -20,7 +20,7 @@
     </tbody>
   </table>
   {% else %}
-  <p class="notice">등록된 영상이 없습니다. api 레포에서 <code>python manage.py import_outputs</code>로 분석 결과를 넣으세요.</p>
+  <p class="notice">등록된 영상이 없습니다. <a href="{% url 'game_new' %}">영상 추가</a>에서 vod 폴더의 영상을 골라 분석하세요.</p>
   {% endif %}
 </main>
 {% endblock %}

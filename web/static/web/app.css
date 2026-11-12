@@ -315,3 +315,24 @@ body.nle {
 .cond-C { background: #7B61FF; }
 .legend-line .cond { width: 18px; height: 18px; font-size: 10.5px; vertical-align: 1px; }
 mark { background: linear-gradient(transparent 45%, var(--marker) 45%, var(--marker) 90%, transparent 90%); color: inherit; padding: 0 1px; }
+
+/* 영상 추가·분석 실행 */
+.title-row { display: flex; justify-content: space-between; align-items: center; }
+.form-card { background: var(--sheet); border-radius: 16px; box-shadow: var(--card-shadow); padding: 6px 22px 22px; }
+.form-card h2 { font-size: 14px; margin: 20px 0 8px; }
+.pick { box-shadow: none; border: 1px solid var(--line); }
+.pick tr.is-disabled td { color: var(--pencil); }
+.pick label { cursor: pointer; font-weight: 600; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; }
+.fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink2); font-weight: 600; }
+.fields input, .fields select { font: inherit; font-size: 13px; border: 1.5px solid var(--rule); border-radius: 10px; padding: 7px 10px; background: var(--paper); color: var(--ink); }
+.fields input:focus, .fields select:focus { border-color: var(--blue); outline: none; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 13px; margin-bottom: 10px; }
+.checks label { display: inline-flex; gap: 6px; align-items: center; }
+.form-card .btn { margin-top: 8px; }
+.run-banner { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.run-banner .inline { margin-left: auto; }
+.run-panel { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.4fr); gap: 16px; margin-bottom: 20px; }
+.run-panel h2 { font-size: 14px; margin: 0 0 10px; }
+.estimate { font-size: 13px; margin: 6px 0 2px !important; }
+@media (max-width: 900px) { .run-panel { grid-template-columns: 1fr; } }
