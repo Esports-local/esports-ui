@@ -174,7 +174,7 @@
     <span class="dim">{{ screen.runs|length }}개 구간 · 1초에 {{ screen.sample_fps }}장 · 2장 미만 구간은 뺐어요</span>
   </div>
   <table class="table">
-    <thead><tr><th>영역</th><th>값</th><th class="mono">시작</th><th class="mono">끝</th><th class="right">길이</th><th class="right">신뢰도</th><th class="right">장수</th></tr></thead>
+    <thead><tr><th>영역</th><th>값</th><th class="mono">시작</th><th class="mono">끝</th><th class="right">길이</th><th class="right" title="OCR 모델이 이 값을 읽으며 낸 확신 점수의 평균 (0~1, 1에 가까울수록 확실)">OCR 확신도</th><th class="right" title="이 구간에서 같은 값을 읽은 프레임 수 (1초에 {{ screen.sample_fps }}장씩 봄)">읽은 프레임</th></tr></thead>
     <tbody>
       {% for r in screen.runs %}
       <tr>

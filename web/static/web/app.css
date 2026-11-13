@@ -30,7 +30,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .dim { color: var(--pencil); }
 .serif { font-family: var(--serif); line-height: 1.85; }
-.right { text-align: right; }
+.right, .table th.right, .table td.right { text-align: right; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* 앱바 */
