@@ -247,3 +247,82 @@ def game_detail(request, game_id):
     except ApiError as e:
         ctx["tab_error"] = e.message
     return render(request, "web/game.html", ctx)
+
+
+# ---------------------------------------------------------------- Claude Code 스킬 사용·선택 평가
+
+JOB_STATUS_LABELS = {"queued": "대기 중", "running": "실행 중", "done": "완료", "failed": "실패", "cancelled": "중지됨"}
+EVAL_MODELS = ["sonnet", "haiku"]
+EVAL_REPEATS = [1, 2, 3]
+CASES_PER_SKILL = 12  # dev-workflow evals/cases: 스킬마다 요청 12개 (화면에서 추가하면 늘어난다)
+EVAL_REPOS = ["esports-analyzer", "esports-api", "esports-ui"]
+# 평가 결과에 붙이는 이름 후보. 실제 이름은 "<후보>-<모델>" (예: baseline-sonnet). 설명을 고친 뒤에는 after-N 으로 돌려 비교한다
+EVAL_LABELS = [("baseline", "기준 (지금 설명)"), ("after-1", "수정 후 1차"), ("after-2", "수정 후 2차"),
+               ("after-3", "수정 후 3차")]
+SAME_SKILL = "same"  # 테스트 요청 추가: 기대 스킬 = 시험하는 스킬
+
+
+def _short(skill):
+    """esports-dev:local-up → local-up"""
+    return (skill or "").split(":")[-1]
+
+
+def skills(request):
+    """스킬별 사용 기록과 선택 평가 결과, 틀린 요청 목록, 평가 실행."""
+    batch, skill = request.GET.get("batch") or None, request.GET.get("skill") or None
+    try:
+        data = api.get_skills(batch)
+        cases = api.get_skill_evals(data["batch"], skill) if data["batch"] else []
+        jobs = api.list_eval_jobs()
+        all_cases = api.list_eval_cases()
+    except ApiError as e:
+        return _error(request, e)
+    for s in data["skills"]:
+        s["name"] = _short(s["skill"])
+        if s["eval"] and s["eval"]["recall"] is not None:
+            s["eval"]["recall_width"] = round(s["eval"]["recall"] * 100)
+    for c in cases:
+        c["expect_name"] = _short(c["expect"]) or "스킬 없음"
+        c["bad"] = c["miss"] + c["wrong"]
+        c["did_text"] = ", ".join(f"{_short(d['name'])} {d['count']}번" for d in c["did"])
+    known = sorted({c["skill"] for c in all_cases} | {s["skill"] for s in data["skills"]})
+    added = [c for c in all_cases if c["origin"] == "ui"]
+    for c in added:
+        c["skill_name"], c["expect_name"] = _short(c["skill"]), _short(c["expect"]) or "스킬 없음"
+    job = data["job"]
+    last = next((j for j in jobs if j["status"] not in ("queued", "running")), None)
+    for j in (job, last):
+        if j:
+            j["status_label"] = JOB_STATUS_LABELS.get(j["status"], j["status"])
+            j["skills_text"] = ", ".join(j["skills"]) or "전체"
+    return render(request, "web/skills.html", {
+        "data": data, "totals": data["totals"], "cases": cases, "skill": skill, "skill_name": _short(skill),
+        "job": job, "last_job": last, "models": EVAL_MODELS, "repeats": EVAL_REPEATS,
+        "cases_per_skill": CASES_PER_SKILL, "error": request.GET.get("error"),
+        "skill_options": [(s, _short(s)) for s in known], "repos": EVAL_REPOS, "added": added,
+        "labels": EVAL_LABELS, "same_skill": SAME_SKILL,
+        "case_count": len(all_cases),
+        "query": urlencode({"batch": data["batch"]}) if batch else ""})
+
+
+@require_POST
+def skills_action(request):
+    """평가 실행 요청 / 중지 → 스킬 화면으로 돌아간다."""
+    f = request.POST
+    try:
+        if f.get("action") == "cancel":
+            api.cancel_eval_job(f.get("job_id"))
+        elif f.get("action") == "add_case":
+            skill = f.get("skill", "")
+            expect = skill if f.get("expect") == SAME_SKILL else f.get("expect", "")
+            api.create_eval_case({"skill": skill, "expect": expect, "kind": "should" if expect == skill else "should_not",
+                                  **{k: f.get(k, "") for k in ("split", "repo", "prompt")}})
+        else:
+            model = f.get("model", "sonnet")
+            if f.get("label") not in dict(EVAL_LABELS):
+                raise ValueError
+            api.create_eval_job(f"{f['label']}-{model}", [f["skill"]] if f.get("skill") else [],
+                                int(f.get("repeat") or 1), model)
+    except (ApiError, ValueError) as e:
+        return redirect(f"/skills/?{urlencode({'error': getattr(e, 'message', '입력값이 올바르지 않습니다')})}")
+    return redirect("skills")

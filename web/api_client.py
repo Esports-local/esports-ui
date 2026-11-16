@@ -88,3 +88,42 @@ def cancel_game(game_id):
 def estimate_game(game_id, conditions):
     """GET /games/{id}/estimate — 번역 예상 입력 토큰"""
     return _http("GET", f"/games/{game_id}/estimate", params={"conditions": ",".join(conditions)}, timeout=120)
+
+
+# ---------------------------------------------------------------- Claude Code 스킬 사용·선택 평가
+
+def get_skills(batch=None):
+    """GET /skills — 스킬별 집계 (사용 기록 + 선택 평가), 평가 묶음 목록, 진행 중인 평가 실행"""
+    return _http("GET", "/skills", params={"batch": batch} if batch else None)
+
+
+def get_skill_evals(batch=None, skill=None, only="failed"):
+    """GET /skills/evals — 평가 요청별 결과 (기본: 틀린 적 있는 요청만)"""
+    params = {k: v for k, v in (("batch", batch), ("skill", skill), ("only", only)) if v}
+    return _http("GET", "/skills/evals", params=params)["cases"]
+
+
+def list_eval_jobs():
+    """GET /skills/evals/jobs — 최근 평가 실행"""
+    return _http("GET", "/skills/evals/jobs")["jobs"]
+
+
+def create_eval_job(batch, skills, repeat, model):
+    """POST /skills/evals/jobs — 평가 실행 요청 (맥의 실행기가 가져가 돌린다)"""
+    return _http("POST", "/skills/evals/jobs", json={"batch": batch, "skills": skills, "repeat": repeat, "model": model})
+
+
+def cancel_eval_job(job_id):
+    """POST /skills/evals/jobs/{id}/cancel"""
+    return _http("POST", f"/skills/evals/jobs/{job_id}/cancel")
+
+
+def list_eval_cases(skill=None, origin=None):
+    """GET /skills/cases — 선택 평가 테스트 요청"""
+    params = {k: v for k, v in (("skill", skill), ("origin", origin)) if v}
+    return _http("GET", "/skills/cases", params=params)["cases"]
+
+
+def create_eval_case(body):
+    """POST /skills/cases — 테스트 요청 추가. body: {skill, kind, split, repo, prompt, expect}"""
+    return _http("POST", "/skills/cases", json=body)

@@ -15,6 +15,7 @@
   <header class="bar">
     <a class="brand" href="{% url 'home' %}">LoL 중계 <em>번역</em></a>
     {% block bar %}{% endblock %}
+    <a class="link bar-end" href="{% url 'skills' %}">스킬</a>
   </header>
   {% endblock %}
   {% block content %}{% endblock %}

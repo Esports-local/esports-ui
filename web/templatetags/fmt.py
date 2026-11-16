@@ -20,3 +20,15 @@ def get(mapping, key):
     if not mapping:
         return None
     return mapping.get(key)
+
+
+@register.filter
+def pct(ratio):
+    """0.875 → 88% (None 이면 -)"""
+    return "-" if ratio is None else f"{round(float(ratio) * 100)}%"
+
+
+@register.filter
+def num(value):
+    """1234567 → 1,234,567 (None 이면 -)"""
+    return "-" if value is None else f"{value:,}"
