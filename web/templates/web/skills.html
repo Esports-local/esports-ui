@@ -73,7 +73,7 @@
     <form class="run-form" method="post" action="{% url 'skills_action' %}">{% csrf_token %}
       <label>결과 이름<select name="label">{% for value, name in labels %}<option value="{{ value }}">{{ name }}</option>{% endfor %}</select></label>
       <label>스킬<select name="skill"><option value="">전체</option>{% for value, name in skill_options %}<option value="{{ value }}"{% if value == skill %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-      <label>요청마다<select name="repeat">{% for n in repeats %}<option value="{{ n }}"{% if n == 2 %} selected{% endif %}>{{ n }}번</option>{% endfor %}</select></label>
+      <label>요청마다<select name="repeat">{% for n in repeats %}<option value="{{ n }}"{% if n == 1 %} selected{% endif %}>{{ n }}번</option>{% endfor %}</select></label>
       <label>모델<select name="model">{% for m in models %}<option>{{ m }}</option>{% endfor %}</select></label>
       <button class="btn" name="action" value="run">평가 실행</button>
     </form>
