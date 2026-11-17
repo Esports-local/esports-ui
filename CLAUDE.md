@@ -18,12 +18,15 @@ Django 템플릿 위주, 자바스크립트는 최소로.
     - 대사 검수 (`/lines/{line_id}/review`): O/X 버튼(검수 여부), "고치기"로 문장 수정, 고친 대사는 ASR 원문과 글자 단위 비교(`<del>`/`<ins>`). 고친 문장으로 번역된다
   - `?tab=screen&tag=` 화면 OCR 구간 (`/screen`)
   - `?tab=json&stage=` 단계 결과 원본 (`/analysis`)
+- `/skills/` 스킬 사용·선택 평가 (`GET /skills`, `/skills/evals`, `/skills/cases`, `/skills/evals/jobs`): 요약 타일, 스킬별 표, 틀린 요청(`?skill=`로 거름, `?batch=`로 결과 이름 바꿈)
+  - 평가 실행 (`POST /skills/evals/jobs`): 결과 이름은 후보(`EVAL_LABELS`: baseline, after-1~3)에서 고르고 실제 이름은 `<후보>-<모델>`. 진행 중이면 5초마다 새로고침, 중지 (`/cancel`). 실제 실행은 맥의 `../dev-workflow/evals/worker.py`
+  - 테스트 요청 추가 (`POST /skills/cases`): "골라야 하는 스킬"이 시험하는 스킬과 다르면 쓰면 안 되는 요청으로 들어간다
 - 할 것: 케이스셋 검수 화면 (`/cases`), 영상 재생(hls)
 
 ## 구조
 - api 호출은 `web/api_client.py`에만
 - `web/views.py`: 화면별 뷰
-- 템플릿 `web/templates/web/` (`games.html`, `game.html`), 공통 필터 `web/templatetags/fmt.py` (`tc` 초 → mm:ss, `get`)
+- 템플릿 `web/templates/web/` (`games.html`, `game.html`, `skills.html`), 공통 필터 `web/templatetags/fmt.py` (`tc` 초 → mm:ss, `get`, `pct` 비율 → %, `num` 천 단위 쉼표)
 - 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 블루 진영 = 파랑, 레드 진영 = 빨강
 
 ```

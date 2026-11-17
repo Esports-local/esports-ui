@@ -27,6 +27,7 @@ LoL 중계 번역 실험의 화면 (Django 템플릿). [esports-api](https://git
 | `/games/<id>/?tab=lines` | 대사·번역 (A 대사만 / B + 화면 OCR / C + 영상 프레임), 그 시점 게임 시간·킬. 대사 검수(O/X, 고치기·되돌리기, ASR 원문과 글자 단위 비교), 검수 진행률, 필터 `only=unreviewed\|edited\|translated` |
 | `/games/<id>/?tab=screen&tag=` | 화면 OCR 구간 |
 | `/games/<id>/?tab=json&stage=` | 분석 단계 결과 원본 |
+| `/skills/` | Claude Code 스킬(`esports-dev`) 사용 · 선택 평가: 스킬별 호출·성공률·시간·토큰과 재현율·정밀도, 틀린 요청 목록, 평가 실행(결과 이름·스킬·횟수·모델, 진행 중이면 5초마다 새로고침·중지), 테스트 요청 추가. 평가는 맥에서 [dev-workflow](https://github.com/Esports-local/dev-workflow)의 `evals/worker.py`가 켜져 있어야 돈다 |
 
 다음에 할 것: 케이스셋 검수 화면(`/cases`), 영상 재생(HLS)
 
