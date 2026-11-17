@@ -92,9 +92,10 @@ def estimate_game(game_id, conditions):
 
 # ---------------------------------------------------------------- Claude Code 스킬 사용·선택 평가
 
-def get_skills(batch=None):
-    """GET /skills — 스킬별 집계 (사용 기록 + 선택 평가), 평가 묶음 목록, 진행 중인 평가 실행"""
-    return _http("GET", "/skills", params={"batch": batch} if batch else None)
+def get_skills(batch=None, compare=None):
+    """GET /skills — 스킬별 집계 (사용 기록 + 선택 평가), 결과 이름 목록, 진행 중인 평가 실행. compare: 비교할 결과 이름"""
+    params = {k: v for k, v in (("batch", batch), ("compare", compare)) if v}
+    return _http("GET", "/skills", params=params or None)
 
 
 def get_skill_evals(batch=None, skill=None, only="failed"):
@@ -108,9 +109,10 @@ def list_eval_jobs():
     return _http("GET", "/skills/evals/jobs")["jobs"]
 
 
-def create_eval_job(batch, skills, repeat, model):
-    """POST /skills/evals/jobs — 평가 실행 요청 (맥의 실행기가 가져가 돌린다)"""
-    return _http("POST", "/skills/evals/jobs", json={"batch": batch, "skills": skills, "repeat": repeat, "model": model})
+def create_eval_job(batch, skills, repeat, model, case_ids=None):
+    """POST /skills/evals/jobs — 평가 실행 요청 (맥의 실행기가 가져가 돌린다). case_ids 를 주면 그 요청만"""
+    return _http("POST", "/skills/evals/jobs", json={"batch": batch, "skills": skills, "repeat": repeat, "model": model,
+                                                     "case_ids": case_ids or []})
 
 
 def cancel_eval_job(job_id):
@@ -127,3 +129,14 @@ def list_eval_cases(skill=None, origin=None):
 def create_eval_case(body):
     """POST /skills/cases — 테스트 요청 추가. body: {skill, kind, split, repo, prompt, expect}"""
     return _http("POST", "/skills/cases", json=body)
+
+
+def update_eval_case(case_id, expect=None, remove=False):
+    """POST /skills/cases/{id} — 정답 바꾸기(expect, 빈칸 = 스킬 없음) 또는 빼기(remove). 이미 돈 결과도 다시 판정된다"""
+    body = {"remove": True} if remove else {"expect": expect or ""}
+    return _http("POST", f"/skills/cases/{case_id}", json=body)
+
+
+def list_improve_tries(skill=None):
+    """GET /skills/improves — 설명 자동 개선 시도 (dev-workflow evals/improve.py)"""
+    return _http("GET", "/skills/improves", params={"skill": skill} if skill else None)["tries"]

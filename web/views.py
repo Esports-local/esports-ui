@@ -258,7 +258,8 @@ CASES_PER_SKILL = 12  # dev-workflow evals/cases: 스킬마다 요청 12개 (화
 EVAL_REPOS = ["esports-analyzer", "esports-api", "esports-ui"]
 # 평가 결과에 붙이는 이름 후보. 실제 이름은 "<후보>-<모델>" (예: baseline-sonnet). 설명을 고친 뒤에는 after-N 으로 돌려 비교한다
 EVAL_LABELS = [("baseline", "기준 (지금 설명)"), ("after-1", "수정 후 1차"), ("after-2", "수정 후 2차"),
-               ("after-3", "수정 후 3차")]
+               ("after-3", "수정 후 3차"), ("recheck", "다시 재기 (확인용)")]
+EVAL_SCOPES = [("all", "전체 요청"), ("failed", "지금 보는 결과에서 틀린 요청만")]
 SAME_SKILL = "same"  # 테스트 요청 추가: 기대 스킬 = 시험하는 스킬
 
 
@@ -270,8 +271,10 @@ def _short(skill):
 def skills(request):
     """스킬별 사용 기록과 선택 평가 결과, 틀린 요청 목록, 평가 실행."""
     batch, skill = request.GET.get("batch") or None, request.GET.get("skill") or None
+    compare = request.GET.get("compare") or None
     try:
-        data = api.get_skills(batch)
+        data = api.get_skills(batch, compare)
+        tries = api.list_improve_tries(skill)
         cases = api.get_skill_evals(data["batch"], skill) if data["batch"] else []
         jobs = api.list_eval_jobs()
         all_cases = api.list_eval_cases()
@@ -281,6 +284,10 @@ def skills(request):
         s["name"] = _short(s["skill"])
         if s["eval"] and s["eval"]["recall"] is not None:
             s["eval"]["recall_width"] = round(s["eval"]["recall"] * 100)
+        a, b = (s["eval"] or {}).get("recall"), (s["compare"] or {}).get("recall")
+        s["recall_diff"] = None if a is None or b is None else round((a - b) * 100)
+    for t in tries:
+        t["name"] = _short(t["skill"])
     for c in cases:
         c["expect_name"] = _short(c["expect"]) or "스킬 없음"
         c["bad"] = c["miss"] + c["wrong"]
@@ -300,18 +307,24 @@ def skills(request):
         "job": job, "last_job": last, "models": EVAL_MODELS, "repeats": EVAL_REPEATS,
         "cases_per_skill": CASES_PER_SKILL, "error": request.GET.get("error"),
         "skill_options": [(s, _short(s)) for s in known], "repos": EVAL_REPOS, "added": added,
-        "labels": EVAL_LABELS, "same_skill": SAME_SKILL,
+        "labels": EVAL_LABELS, "same_skill": SAME_SKILL, "scopes": EVAL_SCOPES, "tries": tries,
+        "compare": data.get("compare"),
         "case_count": len(all_cases),
         "query": urlencode({"batch": data["batch"]}) if batch else ""})
 
 
 @require_POST
 def skills_action(request):
-    """평가 실행 요청 / 중지 → 스킬 화면으로 돌아간다."""
+    """평가 실행 요청 / 중지, 테스트 요청 추가 / 정답 바꾸기 / 빼기 → 스킬 화면으로 돌아간다."""
     f = request.POST
     try:
         if f.get("action") == "cancel":
             api.cancel_eval_job(f.get("job_id"))
+        elif f.get("action") in ("edit_case", "remove_case"):
+            api.update_eval_case(f.get("case_id", ""), expect=f.get("expect", ""),
+                                 remove=f.get("action") == "remove_case")
+            back = f.get("back", "")
+            return redirect(back if back.startswith("/skills/") else "skills")  # 거르던 스킬·결과 이름 그대로
         elif f.get("action") == "add_case":
             skill = f.get("skill", "")
             expect = skill if f.get("expect") == SAME_SKILL else f.get("expect", "")
@@ -321,8 +334,14 @@ def skills_action(request):
             model = f.get("model", "sonnet")
             if f.get("label") not in dict(EVAL_LABELS):
                 raise ValueError
+            case_ids = []
+            if f.get("scope") == "failed":  # 지금 보는 결과(source)에서 틀린 적 있는 요청만 다시 돌린다
+                failed = api.get_skill_evals(f.get("source") or None, f.get("skill") or None, "failed")
+                case_ids = [c["id"] for c in failed]
+                if not case_ids:
+                    raise ApiError("다시 돌릴 틀린 요청이 없습니다", 400)
             api.create_eval_job(f"{f['label']}-{model}", [f["skill"]] if f.get("skill") else [],
-                                int(f.get("repeat") or 1), model)
+                                int(f.get("repeat") or 1), model, case_ids)
     except (ApiError, ValueError) as e:
         return redirect(f"/skills/?{urlencode({'error': getattr(e, 'message', '입력값이 올바르지 않습니다')})}")
     return redirect("skills")

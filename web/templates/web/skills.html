@@ -19,14 +19,22 @@
       {% if data.batches|length > 1 %} · 다른 결과: {% for b in data.batches %}{% if b.batch != data.batch %}<a href="?batch={{ b.batch|urlencode }}">{{ b.batch }}</a> {% endif %}{% endfor %}{% endif %}
     {% else %}아직 평가 기록이 없습니다.{% endif %}
   </p>
+  {% if data.batches|length > 1 %}
+  <form class="compare-form" method="get">
+    <input type="hidden" name="batch" value="{{ data.batch }}">{% if skill %}<input type="hidden" name="skill" value="{{ skill }}">{% endif %}
+    <label class="small dim">비교할 결과 <select name="compare" onchange="this.form.submit()"><option value="">비교 안 함</option>
+      {% for b in data.batches %}{% if b.batch != data.batch %}<option value="{{ b.batch }}"{% if b.batch == compare %} selected{% endif %}>{{ b.batch }} ({{ b.runs }}번)</option>{% endif %}{% endfor %}</select></label>
+    <noscript><button class="btn small ghost">비교</button></noscript>
+  </form>
+  {% endif %}
 
   {% if data.skills %}
   <table class="table">
     <thead>
-      <tr><th rowspan="2">스킬</th><th class="group" colspan="5">실제 사용 (최근 {{ data.days }}일)</th><th class="group" colspan="5">선택 평가</th></tr>
+      <tr><th rowspan="2">스킬</th><th class="group" colspan="5">실제 사용 (최근 {{ data.days }}일)</th><th class="group" colspan="{% if compare %}6{% else %}5{% endif %}">선택 평가</th></tr>
       <tr>
         <th class="right edge">호출</th><th class="right">성공률</th><th class="right">평균 시간</th><th class="right">입력 토큰</th><th class="right">출력 토큰</th>
-        <th class="right edge">재현율</th><th class="right">정밀도</th><th class="right">골라야 함</th><th class="right">누락</th><th class="right">오선택</th>
+        <th class="right edge">재현율</th>{% if compare %}<th class="right" title="{{ compare }} 의 재현율과 차이">{{ compare }}</th>{% endif %}<th class="right">정밀도</th><th class="right">골라야 함</th><th class="right">누락</th><th class="right">오선택</th>
       </tr>
     </thead>
     <tbody>
@@ -44,12 +52,13 @@
         {% endif %}
         {% if s.eval and s.eval.should %}
         <td class="edge"><div class="meter-cell" title="골라야 하는 {{ s.eval.should }}번 중 {{ s.eval.hit }}번 고름"><div class="meter"><span style="width: {{ s.eval.recall_width }}%"></span></div><span class="mono">{{ s.eval.recall|pct }}</span></div></td>
+        {% if compare %}<td class="right mono">{% if s.compare %}{{ s.compare.recall|pct }}{% if s.recall_diff is not None %} <span class="diff {% if s.recall_diff > 0 %}is-up{% elif s.recall_diff < 0 %}is-down{% endif %}">{% if s.recall_diff > 0 %}+{% endif %}{{ s.recall_diff }}%p</span>{% endif %}{% else %}-{% endif %}</td>{% endif %}
         <td class="right mono" title="고른 {{ s.eval.picked }}번 중 {{ s.eval.hit }}번이 맞음">{{ s.eval.precision|pct }}</td>
         <td class="right mono">{{ s.eval.should }}</td>
         <td class="right mono">{{ s.eval.miss }}</td>
         <td class="right mono">{{ s.eval.wrong }}</td>
         {% else %}
-        <td class="right dim edge">-</td><td class="right dim">-</td><td class="right dim">-</td><td class="right dim">-</td><td class="right dim">-</td>
+        <td class="right dim edge">-</td>{% if compare %}<td class="right dim">-</td>{% endif %}<td class="right dim">-</td><td class="right dim">-</td><td class="right dim">-</td><td class="right dim">-</td>
         {% endif %}
       </tr>
       {% endfor %}
@@ -73,11 +82,13 @@
     <form class="run-form" method="post" action="{% url 'skills_action' %}">{% csrf_token %}
       <label>결과 이름<select name="label">{% for value, name in labels %}<option value="{{ value }}">{{ name }}</option>{% endfor %}</select></label>
       <label>스킬<select name="skill"><option value="">전체</option>{% for value, name in skill_options %}<option value="{{ value }}"{% if value == skill %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+      <label>요청<select name="scope">{% for value, name in scopes %}<option value="{{ value }}">{{ name }}</option>{% endfor %}</select></label>
+      <input type="hidden" name="source" value="{{ data.batch|default:'' }}">
       <label>요청마다<select name="repeat">{% for n in repeats %}<option value="{{ n }}"{% if n == 1 %} selected{% endif %}>{{ n }}번</option>{% endfor %}</select></label>
       <label>모델<select name="model">{% for m in models %}<option>{{ m }}</option>{% endfor %}</select></label>
       <button class="btn" name="action" value="run">평가 실행</button>
     </form>
-    <p class="dim small">스킬 하나는 요청 {{ cases_per_skill }}개 × 고른 횟수만큼 돕니다 (실행당 입력 약 3만 토큰). 결과는 "결과 이름-모델"(예: baseline-sonnet)로 쌓이고, 같은 이름에서 이미 돈 실행은 건너뛰어요. 설명을 고친 뒤에는 "수정 후"로 돌려야 기준과 비교됩니다.</p>
+    <p class="dim small">스킬 하나는 요청 {{ cases_per_skill }}개 × 고른 횟수만큼 돕니다 (실행당 입력 약 3만 토큰). 결과는 "결과 이름-모델"(예: baseline-sonnet)로 쌓이고, 같은 이름에서 이미 돈 실행은 건너뛰어요. 설명을 고친 뒤에는 "수정 후"로 돌려야 기준과 비교됩니다. "틀린 요청만"은 지금 보는 결과({{ data.batch|default:'-' }})에서 틀린 적 있는 요청만 돌립니다. 기준을 덮지 않으려면 결과 이름을 "다시 재기"로 고르세요.</p>
     {% if last_job %}<p class="dim small">마지막 실행: <span class="status is-{{ last_job.status }}">{{ last_job.status_label }}</span> {{ last_job.batch }} · {{ last_job.skills_text }} · {{ last_job.done }} / {{ last_job.total }}{% if last_job.error %} · {{ last_job.error }}{% endif %}</p>{% endif %}
     {% endif %}
   </div>
@@ -110,19 +121,50 @@
   </table>
   {% endif %}
 
+  <div class="section-head"><h2>설명 개선 시도{% if skill %} · {{ skill_name }}{% endif %}</h2><span class="dim small"><code>evals/improve.py</code>가 실패 사례로 원인 가설과 새 설명을 만들고, 다시 평가해 채택·기각합니다.</span></div>
+  {% if tries %}
+  <table class="table">
+    <thead><tr><th>스킬</th><th class="right">시도</th><th>원인 종류</th><th>가설 · 바꾼 것</th><th>결과</th><th>고쳐짐 / 깨짐</th></tr></thead>
+    <tbody>
+      {% for t in tries %}
+      <tr{% if t.invalid %} class="is-invalid"{% endif %}>
+        <td class="nowrap">{{ t.name }}</td>
+        <td class="right mono">{{ t.try }}</td>
+        <td class="nowrap">{{ t.cause|default:"-" }}</td>
+        <td class="try-text">{{ t.hypothesis }}<details><summary class="small dim">바꾼 것 · 새 설명</summary><p class="small">{{ t.change }}</p><p class="small dim">{{ t.description }}</p></details></td>
+        <td>{% if t.invalid %}<span class="status is-cancelled">무효</span><div class="small dim">{{ t.invalid }}</div>{% elif t.accepted %}<span class="status is-done">채택</span>{% else %}<span class="status is-failed">기각</span>{% endif %}
+          <div class="small dim">{{ t.reason }}</div></td>
+        <td class="small">{% for p in t.fixed %}<div class="is-up">+ {{ p }}</div>{% endfor %}{% for p in t.broken %}<div class="is-down">− {{ p }}</div>{% endfor %}{% if not t.fixed and not t.broken %}<span class="dim">없음</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="notice">아직 개선 시도가 없습니다. <code>python3 evals/improve.py --skill &lt;스킬&gt; --post http://localhost:8002</code></p>
+  {% endif %}
+
   <div class="section-head"><h2>틀린 요청{% if skill %} · {{ skill_name }}{% endif %}</h2>
     {% if skill %}<a class="link" href="?{{ query }}">전체 보기</a>{% endif %}
-    <span class="dim small">테스트 요청은 직접 쓴 문장이에요 (실제 대화가 아님).</span></div>
+    <span class="dim small">테스트 요청은 직접 쓴 문장이에요 (실제 대화가 아님). 정답이 틀렸으면 고치거나 빼세요. 이미 돈 결과도 새 정답으로 다시 판정됩니다.</span></div>
   {% if cases %}
   <table class="table">
-    <thead><tr><th>요청</th><th>레포</th><th>기대</th><th>실제로 한 일</th><th class="right">틀린 횟수</th><th>구분</th></tr></thead>
+    <thead><tr><th>요청</th><th>레포</th><th>정답 (골라야 하는 스킬)</th><th>실제로 한 일</th><th class="right">틀린 횟수</th><th>구분</th></tr></thead>
     <tbody>
       {% for c in cases %}
       <tr>
         <td class="case-prompt">{{ c.prompt }}</td>
         <td class="nowrap">{{ c.repo }}</td>
-        <td class="nowrap">{{ c.expect_name }}</td>
-        <td>{% if c.wrong %}<span class="status is-wrong">오선택</span>{% else %}<span class="status is-miss">누락</span>{% endif %} {{ c.did_text }}</td>
+        <td class="nowrap">
+          <form class="case-edit" method="post" action="{% url 'skills_action' %}">{% csrf_token %}
+            <input type="hidden" name="case_id" value="{{ c.id }}"><input type="hidden" name="back" value="{{ request.get_full_path }}">
+            <select name="expect"><option value="">스킬 없음</option>{% for value, name in skill_options %}<option value="{{ value }}"{% if value == c.expect %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+            <button class="btn small" name="action" value="edit_case">고치기</button>
+            <button class="btn small ghost" name="action" value="remove_case" onclick="return confirm('이 요청을 테스트에서 뺄까요? 모든 결과의 집계에서 빠집니다.')">빼기</button>
+          </form>
+          {% if c.change %}<span class="status is-queued small">파일 반영 대기</span>{% endif %}
+        </td>
+        <td>{% if c.wrong %}<span class="status is-wrong">오선택</span>{% else %}<span class="status is-miss">누락</span>{% endif %} {{ c.did_text }}
+          {% for cmd in c.inputs %}<div class="first-input mono">{{ cmd }}</div>{% endfor %}</td>
         <td class="right mono">{{ c.bad }} / {{ c.runs }}</td>
         <td class="nowrap dim">{% if c.split == "val" %}검증용{% else %}개선용{% endif %}</td>
       </tr>
