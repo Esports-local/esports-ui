@@ -8,7 +8,6 @@
 아래 작업은 코드를 보거나 명령을 치기 전에 해당 스킬을 먼저 부른다. 이 문서의 구조만 보고 바로 하면 스킬에 적힌 순서와 같이 고칠 곳(스펙 시트, api)을 빠뜨린다.
 - 화면에 새 데이터를 보이려고 api 호출을 추가·변경 (`web/api_client.py`) → `esports-dev:add-endpoint`
 - 로컬 서버 띄우기·끄기·로그 → `esports-dev:local-up`
-- README·CLAUDE.md 를 코드에 맞추기 → `esports-dev:docs-sync`
 
 ## 이 레포의 역할
 간단한 웹 화면. 자체 DB 없이 api 를 HTTP로 호출해 렌더링한다 (`API_URL`, 기본 `http://api:8000`).
@@ -36,6 +35,7 @@ Django 템플릿 위주, 자바스크립트는 최소로.
 
 ## 구조
 - api 호출은 `web/api_client.py`에만
+- 테스트 `tests/` (템플릿 문법·필터, api 없이 돈다). CI: `.github/workflows/ci.yml` (푸시·PR 마다 `check` + 테스트)
 - `web/views.py`: 화면별 뷰
 - 템플릿 `web/templates/web/` (`games.html`, `game.html`, `skills.html`), 공통 필터 `web/templatetags/fmt.py` (`tc` 초 → mm:ss, `get`, `pct` 비율 → %, `num` 천 단위 쉼표)
 - 색·글꼴 토큰은 `web/static/web/app.css` 맨 위. 블루 진영 = 파랑, 레드 진영 = 빨강
