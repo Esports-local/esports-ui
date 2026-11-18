@@ -110,6 +110,61 @@
         <p class="miss-did">{% if c.wrong %}<span class="status is-wrong">오선택</span>{% else %}<span class="status is-miss">누락</span>{% endif %}
           {% if c.wrong %}{{ c.did_names }} 스킬을 불렀습니다{% else %}스킬을 부르지 않고 {{ c.did_names }} 부터 실행했습니다{% endif %}</p>
         {% for cmd in c.inputs %}<pre class="first-input">{{ cmd }}</pre>{% endfor %}
+        {% if c.fix %}{% with f=c.fix %}
+        <section class="fixbox" aria-label="고칠 방법">
+          <p class="fixhead">고칠 방법 <span>실행기가 레포 CLAUDE.md 를 보고 진단함</span></p>
+          <dl class="diag">
+            <dt>CLAUDE.md 안내</dt>
+            <dd>{% if f.has_line %}<span class="ok">있음</span>{% if f.applied_uncommitted %} · 화면에서 넣었고 아직 커밋 전{% endif %}{% else %}<span class="no">없음</span> · {{ f.repo }} CLAUDE.md "스킬 먼저"에 {{ f.skill_name }} 줄이 없어요{% endif %}</dd>
+            {% if f.others %}<dt>다른 레포</dt><dd><span class="ok">있음</span> · {{ f.others_text }}</dd>{% endif %}
+            {% if f.recheck %}<dt>다시 재기</dt><dd>{% if f.recheck.correct == f.recheck.runs %}<span class="ok">{{ f.recheck.runs }}번 중 {{ f.recheck.correct }}번 맞음</span>{% else %}<span class="no">{{ f.recheck.runs }}번 중 {{ f.recheck.correct }}번 맞음</span>{% endif %} ({{ f.recheck.batch }})</dd>{% endif %}
+            <dt>판단</dt><dd>{% if f.advice == "claudemd" %}설명 문제가 아니라 이 레포 안내가 빠진 것. CLAUDE.md 한 줄이 먼저입니다{% else %}안내가 있는데도 틀려서 설명을 고칩니다{% endif %}</dd>
+          </dl>
+
+          {% if not f.has_line %}
+          <form class="fixopt" method="post" action="{% url 'skills_action' %}">{% csrf_token %}
+            <input type="hidden" name="back" value="{{ request.get_full_path }}"><input type="hidden" name="case_id" value="{{ c.id }}">
+            <input type="hidden" name="repo" value="{{ f.repo }}"><input type="hidden" name="skill" value="{{ f.skill }}">
+            <p class="optt"><span class="rec">추천</span>수정안 1 · CLAUDE.md 에 한 줄 추가</p>
+            <p class="optd">{{ f.repo }}/CLAUDE.md, "스킬 먼저" 목록 끝. 문장은 고쳐서 넣어도 돼요</p>
+            <label class="linebox"><span class="plus">+</span><input name="line" value="{{ f.line }}" aria-label="추가할 줄"></label>
+            <div class="acts">
+              <button class="btn small" name="action" value="fix_apply"{% if job %} disabled{% endif %}>적용하고 틀린 요청 다시 재기</button>
+              <span class="note">파일만 바꿈 (커밋은 따로) · 다시 재기 1회, 입력 약 3만 토큰</span>
+            </div>
+          </form>
+          {% elif f.applied_uncommitted %}
+          <form class="fixopt" method="post" action="{% url 'skills_action' %}">{% csrf_token %}
+            <input type="hidden" name="back" value="{{ request.get_full_path }}">
+            <input type="hidden" name="repo" value="{{ f.repo }}"><input type="hidden" name="skill" value="{{ f.skill }}">
+            <p class="optt"><span class="rec">적용됨</span>{{ f.repo }}/CLAUDE.md 에 넣은 줄이 아직 커밋 전입니다</p>
+            <div class="acts"><button class="btn small" name="action" value="fix_commit"{% if job %} disabled{% endif %}>커밋하기</button><span class="note">docs/CLAUDE.md 에 {{ f.skill_name }} 스킬 안내 추가 (푸시는 안 함)</span></div>
+          </form>
+          {% endif %}
+
+          <form class="fixopt" method="post" action="{% url 'skills_action' %}">{% csrf_token %}
+            <input type="hidden" name="back" value="{{ request.get_full_path }}"><input type="hidden" name="skill" value="{{ f.skill }}">
+            <input type="hidden" name="baseline" value="{{ data.batch }}">
+            <p class="optt">{% if f.has_line %}<span class="rec">추천</span>{% else %}<span class="alt">대안</span>{% endif %}수정안 {% if f.has_line %}1{% else %}2{% endif %} · {{ f.skill_name }} 설명 개선 (improve.py)</p>
+            {% with t=f.latest_try %}
+            {% if t and t.proposed %}
+            <p class="optd">원인 종류 {{ t.cause|default:"-" }} · {{ t.hypothesis }}</p>
+            <div class="desc"><div><b>지금</b>{{ t.before_description }}</div><div class="new"><b>바꾼 뒤 ({{ t.description|length }}자)</b>{{ t.description }}</div></div>
+            <input type="hidden" name="try" value="{{ t.try }}">
+            <div class="acts">
+              <button class="btn small" name="action" value="fix_evaluate"{% if job %} disabled{% endif %}>이 안으로 평가하기</button>
+              <button class="btn small ghost" name="action" value="fix_propose"{% if job %} disabled{% endif %}>다른 수정안 받기</button>
+              <span class="note">평가 약 20회 (입력 약 60만 토큰) · 채택되면 PR 을 만듭니다</span>
+            </div>
+            {% else %}
+            {% if t %}<p class="optd">마지막 시도 {{ t.try }}: {% if t.accepted %}<span class="ok">채택</span>{% else %}<span class="no">기각</span>{% endif %} · {{ t.reason }}</p>{% endif %}
+            <p class="optd">{% if f.has_line %}{% else %}CLAUDE.md 를 바꾸지 않고 설명만 고칠 때. {% endif %}수정안 만들기 LLM 1번, 평가는 그다음 약 20회</p>
+            <div class="acts"><button class="btn small ghost" name="action" value="fix_propose"{% if job %} disabled{% endif %}>수정안 받기</button></div>
+            {% endif %}
+            {% endwith %}
+          </form>
+        </section>
+        {% endwith %}{% endif %}
       </div>
       <form class="miss-fix" method="post" action="{% url 'skills_action' %}">{% csrf_token %}
         <input type="hidden" name="case_id" value="{{ c.id }}"><input type="hidden" name="back" value="{{ request.get_full_path }}">

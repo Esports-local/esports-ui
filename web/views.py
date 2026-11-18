@@ -301,6 +301,8 @@ EVAL_REPOS = ["esports-analyzer", "esports-api", "esports-ui"]
 # 평가 결과에 붙이는 이름 후보. 실제 이름은 "<후보>-<모델>" (예: baseline-sonnet). 설명을 고친 뒤에는 after-N 으로 돌려 비교한다
 EVAL_LABELS = [("baseline", "기준 (지금 설명)"), ("after-1", "수정 후 1차"), ("after-2", "수정 후 2차"),
                ("after-3", "수정 후 3차"), ("recheck", "다시 재기 (확인용)")]
+# "고칠 방법" 버튼 → 실행기 작업 종류
+FIX_ACTIONS = {"fix_apply": "apply_line", "fix_propose": "propose", "fix_evaluate": "evaluate_try", "fix_commit": "commit_line"}
 SKILL_TABS = [("results", "결과"), ("run", "평가 실행"), ("cases", "테스트 요청"), ("improve", "개선 기록")]
 EVAL_SCOPES = [("all", "전체 요청"), ("failed", "지금 보는 결과에서 틀린 요청만")]
 SAME_SKILL = "same"  # 테스트 요청 추가: 기대 스킬 = 시험하는 스킬
@@ -319,6 +321,8 @@ def skills(request):
     try:
         data = api.get_skills(batch, compare)
         tries = api.list_improve_tries(skill)
+        fixes = {f["case_id"]: f for f in api.list_fixes()}
+        all_tries = tries if not skill else api.list_improve_tries()
         cases = api.get_skill_evals(data["batch"], skill) if data["batch"] else []
         jobs = api.list_eval_jobs()
         all_cases = api.list_eval_cases()
@@ -340,6 +344,12 @@ def skills(request):
         # 틀린 실행에서 한 일: 고른 스킬 이름이나 첫 도구 이름 (괄호 없이). 스킬을 고른 경우 입력은 스킬 이름뿐이라 숨긴다
         c["did_names"] = ", ".join(_short(d["name"]).strip("()") for d in c["did"])
         c["inputs"] = [x for x in c.get("inputs") or [] if not x.startswith("esports-dev:")]
+        c["fix"] = fixes.get(c["id"])
+        if c["fix"]:
+            f = c["fix"]
+            f["skill_name"], f["others_text"] = _short(f["skill"]), ", ".join(f.get("others") or [])
+            # 그 스킬의 가장 최근 설명 개선 시도 (수정안만 받았거나, 받아 둔 수정안을 평가한 결과)
+            f["latest_try"] = next((t for t in all_tries if t["skill"] == f["skill"] and not t.get("invalid")), None)
     known = sorted({c["skill"] for c in all_cases} | {s["skill"] for s in data["skills"]})
     added = [c for c in all_cases if c["origin"] == "ui"]
     for c in added:
@@ -383,6 +393,13 @@ def skills_action(request):
     try:
         if f.get("action") == "cancel":
             api.cancel_eval_job(f.get("job_id"))
+        elif f.get("action") in FIX_ACTIONS:
+            kind = FIX_ACTIONS[f["action"]]
+            params = {k: f.get(k, "") for k in ("repo", "skill", "line", "try", "baseline") if f.get(k)}
+            if kind == "evaluate_try":
+                params["try"] = int(params.get("try") or 0)
+            case_ids = [f["case_id"]] if kind == "apply_line" and f.get("case_id") else []
+            api.create_eval_job(kind, [], 1, f.get("model", "sonnet"), case_ids, kind=kind, params=params)
         elif f.get("action") in ("runner_on", "runner_off"):
             api.set_eval_runner(f.get("action") == "runner_on")
         elif f.get("action") in ("edit_case", "remove_case"):

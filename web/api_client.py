@@ -109,10 +109,16 @@ def list_eval_jobs():
     return _http("GET", "/skills/evals/jobs")["jobs"]
 
 
-def create_eval_job(batch, skills, repeat, model, case_ids=None):
-    """POST /skills/evals/jobs — 평가 실행 요청 (맥의 실행기가 가져가 돌린다). case_ids 를 주면 그 요청만"""
+def create_eval_job(batch, skills, repeat, model, case_ids=None, kind="eval", params=None):
+    """POST /skills/evals/jobs — 작업 요청 (맥의 실행기가 가져가 돌린다). case_ids 를 주면 그 요청만.
+    kind: eval(선택 평가) | apply_line | propose | evaluate_try | commit_line (고칠 방법 버튼)"""
     return _http("POST", "/skills/evals/jobs", json={"batch": batch, "skills": skills, "repeat": repeat, "model": model,
-                                                     "case_ids": case_ids or []})
+                                                     "case_ids": case_ids or [], "kind": kind, "params": params or {}})
+
+
+def list_fixes():
+    """GET /skills/fixes — 정답이 맞는데도 틀린 요청의 진단과 고칠 방법 (실행기가 만듦)"""
+    return _http("GET", "/skills/fixes")["fixes"]
 
 
 def cancel_eval_job(job_id):
