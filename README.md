@@ -15,15 +15,15 @@ LoL 중계 번역 실험의 화면 (Django 템플릿). [esports-api](https://git
 
 **세트 화면** (`/games/<id>/`): 레드·블루 매치 띠(가운데 대회·세트·해설·영상 링크), 화면 OCR로 읽은 포지션별 선수, 분석 단계, 분석 다시 실행과 번역 조건 선택
 
-![세트 화면](docs/images/game_overview.png)
+![세트 화면](docs/images/set.png)
 
 **대사·번역 + 검수** (`?tab=lines`): 받아쓴 해설(ASR 한국어) 아래에 조건별 영어 번역을 쌓아 비교한다. 경기 정보의 선수·팀 이름은 금색으로 표시하고, O/X 로 검수하거나 "고치기"로 문장을 바로잡으면 고친 문장으로 다시 번역한다
 
-![대사·번역 비교와 검수](docs/images/lines.png)
+![대사·번역 비교와 검수](docs/images/set_lines.png)
 
 **화면 OCR 구간** (`?tab=screen`): 영역별(팀 킬, KDA, 골드, 타워, 게임 시간, 선수 이름 등)로 같은 값이 이어진 구간. OCR 확신도는 OCR 모델이 그 값을 읽으며 낸 확신 점수의 평균(0~1), 읽은 프레임은 그 구간에서 같은 값을 읽은 프레임 수(1초에 2장씩 봄)
 
-![화면 OCR 구간](docs/images/screen_ocr.png)
+![화면 OCR 구간](docs/images/set_screen_ocr.png)
 
 **스킬 선택 평가** (`/skills/`): Claude Code 스킬(`esports-dev`)을 써야 할 때 제대로 부르는지. 탭 결과(정확도, 스킬별 재현율 막대와 비교 결과 표시선, 틀린 요청과 정답 고치기) / 평가 실행 / 테스트 요청 / 개선 기록
 
