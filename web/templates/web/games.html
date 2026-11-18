@@ -1,26 +1,62 @@
 {% extends "web/base.html" %}
 {% load fmt %}
+{% block scripts %}{% if any_running %}<meta http-equiv="refresh" content="10">{% endif %}{% endblock %}
 {% block content %}
-<main class="narrow">
-  <div class="title-row"><h1 class="page-title">세트 영상</h1><a class="btn" href="{% url 'game_new' %}">영상 추가</a></div>
-  <p class="dim">중계 녹화본 하나가 세트 하나예요. 해설 언어가 다르면 따로 있어요.</p>
+<main class="narrow wide">
+  <div class="title-row">
+    <div>
+      <h1 class="page-title">세트 영상</h1>
+      <p class="lead">중계 녹화본 하나가 세트 하나입니다. 해설 언어가 다르면 따로 있어요.</p>
+    </div>
+    <a class="btn" href="{% url 'game_new' %}">영상 추가</a>
+  </div>
   {% if games %}
-  <table class="table">
-    <thead><tr><th>영상</th><th>해설</th><th>블루 vs 레드</th><th class="right">길이</th><th>상태</th></tr></thead>
-    <tbody>
-      {% for g in games %}
-      <tr>
-        <td><a class="row-main" href="{% url 'game' g.id %}">{{ g.title }}</a></td>
-        <td>{% if g.language == "ko" %}한국어{% elif g.language == "en" %}영어{% else %}{{ g.language }}{% endif %}</td>
-        <td>{% if g.teams %}<span class="side-blue">{{ g.teams.blue }}</span> vs <span class="side-red">{{ g.teams.red }}</span>{% else %}<span class="dim">-</span>{% endif %}</td>
-        <td class="right mono">{{ g.duration_sec|tc }}</td>
-        <td><span class="status is-{{ g.analyze_status }}">{{ g.status_label }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <ul class="set-grid">
+    {% for g in games %}
+    <li>
+      <a class="set-card is-{{ g.analyze_status }}" href="{% url 'game' g.id %}">
+        <div class="set-top">
+          <p class="set-teams">{% if g.teams %}<span class="side-red">{{ g.teams.red }}</span> <span class="vs">vs</span> <span class="side-blue">{{ g.teams.blue }}</span>{% else %}{{ g.title }}{% endif %}</p>
+          <span class="lang">{% if g.language == "ko" %}한국어 해설{% elif g.language == "en" %}영어 해설{% else %}{{ g.language }}{% endif %}</span>
+        </div>
+        <p class="set-meta">{% if g.match %}{{ g.match.tournament }} {{ g.match.stage }}, {{ g.match.game }}세트{% else %}{{ g.title }}{% endif %} · <span class="mono">{{ g.duration_sec|tc }}</span></p>
+
+        <dl class="set-rows">
+          <div class="set-rowline">
+            <dt>분석</dt>
+            <dd>
+              <p class="set-status"><span class="status is-{{ g.analyze_status }}">{{ g.status_label }}</span>{% if g.stages %}<span class="dim">{{ g.stages_done }}/{{ g.stages|length }} 단계 완료</span>{% endif %}</p>
+              {% if g.stages %}
+              <ul class="stage-chips">
+                {% for s in g.stages %}<li class="is-{{ s.status }}" title="{% if s.status == 'done' %}완료{% elif s.status == 'running' %}진행 중{% elif s.status == 'failed' %}실패{% else %}안 함{% endif %}">{{ s.label }}</li>{% endfor %}
+              </ul>
+              {% endif %}
+            </dd>
+          </div>
+          <div class="set-rowline">
+            <dt>검수</dt>
+            <dd>
+              {% if g.counts %}
+              <p class="set-review-head"><span><b>{{ g.counts.reviewed }}</b><span class="dim">/{{ g.counts.all }}줄</span></span>
+                <span class="dim">{% if g.counts.edited %}고친 대사 {{ g.counts.edited }}{% endif %}{% if g.counts.edited and g.counts.translated %} · {% endif %}{% if g.counts.translated %}번역 {{ g.counts.translated }}줄{% endif %}</span></p>
+              <div class="set-meter"><span style="width: {{ g.counts.review_pct }}%"></span></div>
+              {% else %}<p class="dim">받아쓰기 전</p>{% endif %}
+            </dd>
+          </div>
+          <div class="set-rowline">
+            <dt>다음</dt>
+            <dd><p class="set-next">{{ g.next }}</p></dd>
+          </div>
+        </dl>
+      </a>
+    </li>
+    {% endfor %}
+    <li>
+      <a class="set-card set-add" href="{% url 'game_new' %}"><span class="plus" aria-hidden="true">+</span>영상 추가<span class="dim">vod 폴더의 1920x1080 영상을 골라 분석</span></a>
+    </li>
+  </ul>
   {% else %}
-  <p class="notice">등록된 영상이 없습니다. <a href="{% url 'game_new' %}">영상 추가</a>에서 vod 폴더의 영상을 골라 분석하세요.</p>
+  <p class="empty">등록된 영상이 없습니다. <a href="{% url 'game_new' %}">영상 추가</a>에서 vod 폴더의 영상을 골라 분석하세요.</p>
   {% endif %}
 </main>
 {% endblock %}

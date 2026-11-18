@@ -2,12 +2,7 @@
 {% load fmt %}
 {% block title %}{{ game.title }} · LoL 중계 번역{% endblock %}
 {% block scripts %}{% if running %}<meta http-equiv="refresh" content="10">{% endif %}{% endblock %}
-{% block bar %}
-<span class="crumb">{{ game.title }}</span>
-<nav class="tabs" aria-label="보기">
-  {% for key, label in tabs %}<a href="?tab={{ key }}"{% if tab == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
-</nav>
-{% endblock %}
+{% block bar %}<span class="crumb">{{ game.title }}</span>{% endblock %}
 {% block content %}
 <main class="narrow wide">
   {% if msg %}<p class="notice is-error">{{ msg }}</p>{% endif %}
@@ -22,44 +17,40 @@
   {% elif game.error %}
   <p class="notice is-error"><strong>분석 실패</strong> · {{ game.error|linebreaksbr }}</p>
   {% endif %}
-  <section class="game-head">
-    <div class="card">
-      {% with m=game.match %}
+  <section class="matchbox">
+    {% with m=game.match %}
+    <div class="match">
       {% if m %}
-      <p class="dim small">{{ m.tournament }} · {{ m.stage }} · {{ m.name }} · {{ m.game }}세트</p>
-      <h1 class="page-title"><span class="side-blue">{{ m.blue.team|default:"?" }}</span> vs <span class="side-red">{{ m.red.team|default:"?" }}</span></h1>
-      <p class="dim small">경기 스코어 {% for team, score in m.score.items %}{{ team }} {{ score }}{% if not forloop.last %} : {% endif %}{% endfor %}
-        {% if m.date %} · {{ m.date|slice:":10" }} (UTC){% endif %}</p>
-      <p class="links">
-        {% if m.video_url %}<a class="link" href="{{ m.video_url }}" target="_blank" rel="noopener">이 세트 전체 영상</a>{% endif %}
-        <a class="link" href="{{ m.source_url }}" target="_blank" rel="noopener">op.gg 경기</a>
-      </p>
+      <p class="team is-red">{{ m.red.team|default:"?" }}<small>레드</small></p>
+      <div class="match-meta">
+        <p class="match-event">{{ m.tournament }} {{ m.stage }}</p>
+        <p>{{ m.name }} · {{ m.game }}세트 · {% if game.language == "en" %}영어 해설{% elif game.language == "ko" %}한국어 해설{% else %}{{ game.language }}{% endif %} · <span class="mono">{{ game.duration_sec|tc }}</span></p>
+        <p class="match-links">{% if m.video_url %}<a href="{{ m.video_url }}" target="_blank" rel="noopener">이 세트 전체 영상</a>{% endif %}<a href="{{ m.source_url }}" target="_blank" rel="noopener">op.gg 경기</a></p>
+      </div>
+      <p class="team is-blue"><small>블루</small>{{ m.blue.team|default:"?" }}</p>
       {% else %}
-      <h1 class="page-title">{{ game.title }}</h1>
-      <p class="dim small">경기 정보가 연결되지 않았어요.</p>
+      <p class="team">{{ game.title }}</p>
+      <div class="match-meta"><p>경기 정보가 연결되지 않았어요.</p></div>
+      <span></span>
       {% endif %}
-      {% endwith %}
-      <ul class="stages">
-        {% for s in game.stages %}
-        <li class="is-{{ s.status }}"><span>{{ s.label }}</span>{% if s.elapsed_sec %}<em class="mono">{{ s.elapsed_sec|floatformat:0 }}초</em>{% endif %}</li>
-        {% endfor %}
-      </ul>
     </div>
     {% if roster %}
-    <table class="table roster">
-      <thead><tr><th></th><th class="side-blue">{{ game.match.blue.team }} (블루)</th><th class="side-red">{{ game.match.red.team }} (레드)</th></tr></thead>
-      <tbody>
-        {% for r in roster %}
-        <tr>
-          <td class="dim">{{ r.role }}</td>
-          <td><strong>{{ r.blue.name|default:"-" }}</strong> <span class="dim">{{ r.blue.champion_ko|default:"" }}</span></td>
-          <td><strong>{{ r.red.name|default:"-" }}</strong> <span class="dim">{{ r.red.champion_ko|default:"" }}</span></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-      <caption class="dim small">선수 이름은 화면 OCR로 읽은 값이에요. 챔피언은 아직 비어 있어요.</caption>
-    </table>
+    <div class="roster5" aria-label="포지션별 선수 (레드 · 블루)">
+      {% for r in roster %}
+      <div class="pos"><span class="role">{{ r.role }}</span><span class="side-red">{{ r.red.name|default:"-" }}</span><span class="side-blue">{{ r.blue.name|default:"-" }}</span></div>
+      {% endfor %}
+    </div>
     {% endif %}
+    {% endwith %}
+  </section>
+  <section class="stagerow">
+    <span class="stagerow-label">분석 단계</span>
+    <ul class="stages">
+      {% for s in game.stages %}
+      <li class="is-{{ s.status }}"><span>{{ s.label }}</span>{% if s.elapsed_sec %}<em class="mono">{{ s.elapsed_sec|floatformat:0 }}초</em>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% if roster %}<span class="stagerow-note">선수 이름은 화면 OCR로 읽은 값</span>{% endif %}
   </section>
 
   {% if not running and game.video %}
@@ -98,8 +89,16 @@
   </section>
   {% endif %}
 
+  <nav class="tabs game-tabs" aria-label="보기">
+    {% for key, label in tabs %}<a href="?tab={{ key }}"{% if tab == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+  </nav>
+
   {% if tab_error %}
+  {% if tab_empty %}
+  <p class="empty">{{ tab_error }}. {% if tab == "screen" %}화면 OCR 단계를 실행하면 여기에 구간이 나옵니다.{% else %}분석 단계를 실행하면 나옵니다.{% endif %}</p>
+  {% else %}
   <p class="notice is-error">{{ tab_error }}</p>
+  {% endif %}
   {% elif tab == "lines" %}
   <div class="review-head card">
     <div class="review-progress">
@@ -125,8 +124,8 @@
     <li class="line-item{% if line.rows %} has-tr{% endif %}{% if line.reviewed %} is-reviewed{% endif %}" id="line-{{ line.id }}">
       <div class="line-meta mono">
         <span class="line-time">{{ line.start_sec|tc }}</span>
-        <span class="dim">게임 {{ line.screen.game_time|default:"-" }}</span>
-        {% if line.screen.team_kills %}<span><span class="side-blue">{{ line.screen.team_kills.blue|default:"?" }}</span> : <span class="side-red">{{ line.screen.team_kills.red|default:"?" }}</span></span>{% endif %}
+        {% if line.screen.game_time %}<span class="dim" title="게임 시간">게임 {{ line.screen.game_time }}</span>{% endif %}
+        {% if line.screen.team_kills %}<span title="킬 레드 : 블루"><span class="side-red">{{ line.screen.team_kills.red|default:"?" }}</span> : <span class="side-blue">{{ line.screen.team_kills.blue|default:"?" }}</span></span>{% endif %}
       </div>
       <div class="line-body">
         {% if line.fixed %}

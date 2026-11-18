@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static fmt %}<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -6,17 +6,22 @@
   <title>{% block title %}LoL 중계 번역{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=IBM+Plex+Mono:wght@500;600&family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'web/app.css' %}">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Gothic+A1:wght@600;800;900&family=IBM+Plex+Mono:wght@500;600&family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static_v 'web/app.css' %}">
   {% block scripts %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block header %}
+  {% with here=request.resolver_match.url_name %}
   <header class="bar">
     <a class="brand" href="{% url 'home' %}">LoL 중계 <em>번역</em></a>
     {% block bar %}{% endblock %}
-    <a class="link bar-end" href="{% url 'skills' %}">스킬</a>
+    <nav class="main-nav" aria-label="메뉴">
+      <a href="{% url 'home' %}"{% if here == "home" or here == "game" or here == "game_new" %} aria-current="page"{% endif %}>세트 영상</a>
+      <a href="{% url 'skills' %}"{% if here == "skills" %} aria-current="page"{% endif %}>스킬 평가</a>
+    </nav>
   </header>
+  {% endwith %}
   {% endblock %}
   {% block content %}{% endblock %}
 </body>

@@ -87,7 +87,49 @@ def games(request):
         return _error(request, e)
     for g in items:
         g["status_label"] = GAME_STATUS_LABELS.get(g["analyze_status"], g["analyze_status"])
-    return render(request, "web/games.html", {"games": items})
+        _card(g)
+    any_running = any(g["analyze_status"] == "running" for g in items)
+    return render(request, "web/games.html", {"games": items, "any_running": any_running})
+
+
+def _card(g):
+    """세트 카드에 쓸 진행 상황: 단계, 경기 정보, 검수·번역 수, 다음에 할 일.
+
+    목록 엔드포인트(GET /games)에는 이 값이 없어서 세트마다 상세와 대사를 따로 부른다 (세트 수가 적을 때만 괜찮음).
+    """
+    try:
+        detail = api.get_game(g["id"])
+    except ApiError:
+        return
+    g["match"] = detail.get("match")
+    g["stages"] = [{**x, "label": STAGE_LABELS.get(x["stage"], x["stage"])} for x in detail["stages"]]
+    g["stages_done"] = sum(1 for x in g["stages"] if x["status"] == "done")
+    if detail.get("progress"):
+        g["progress_label"] = STAGE_LABELS.get(detail["progress"].get("current_stage") or "", "준비 중")
+    g["counts"] = None
+    if any(x["stage"] == "asr" and x["status"] == "done" for x in detail["stages"]):
+        try:
+            lines = api.get_game_lines(g["id"])
+        except ApiError:
+            lines = []
+        reviewed = sum(1 for x in lines if (x["review"] or {}).get("reviewed"))
+        g["counts"] = {"all": len(lines), "reviewed": reviewed,
+                       "edited": sum(1 for x in lines if (x["review"] or {}).get("text")),
+                       "translated": sum(1 for x in lines if x["translations"]),
+                       "review_pct": round(reviewed * 100 / len(lines)) if lines else 0}
+    # 다음에 할 일 한 줄
+    if g["analyze_status"] == "running":
+        g["next"] = f"분석 중: {g.get('progress_label', '준비 중')}"
+    elif g["analyze_status"] == "failed":
+        g["next"] = "실패한 단계를 다시 실행하세요"
+    elif not g["counts"]:
+        g["next"] = "받아쓰기가 끝나면 검수할 수 있어요"
+    elif g["counts"]["reviewed"] < g["counts"]["all"]:
+        g["next"] = f"대사 검수 {g['counts']['all'] - g['counts']['reviewed']}줄 남음"
+    elif not g["counts"]["translated"]:
+        g["next"] = "번역을 시작할 수 있어요"
+    else:
+        g["next"] = "검수와 번역을 마쳤어요"
 
 
 def _roster(match):
@@ -245,7 +287,7 @@ def game_detail(request, game_id):
             ctx.update(stage=stage, json_stages=JSON_STAGES,
                        raw=json.dumps(api.get_game_analysis(game_id, stage), ensure_ascii=False, indent=1))
     except ApiError as e:
-        ctx["tab_error"] = e.message
+        ctx["tab_error"], ctx["tab_empty"] = e.message, e.status == 404  # 404 = 아직 그 단계 결과가 없음
     return render(request, "web/game.html", ctx)
 
 
@@ -259,6 +301,7 @@ EVAL_REPOS = ["esports-analyzer", "esports-api", "esports-ui"]
 # 평가 결과에 붙이는 이름 후보. 실제 이름은 "<후보>-<모델>" (예: baseline-sonnet). 설명을 고친 뒤에는 after-N 으로 돌려 비교한다
 EVAL_LABELS = [("baseline", "기준 (지금 설명)"), ("after-1", "수정 후 1차"), ("after-2", "수정 후 2차"),
                ("after-3", "수정 후 3차"), ("recheck", "다시 재기 (확인용)")]
+SKILL_TABS = [("results", "결과"), ("run", "평가 실행"), ("cases", "테스트 요청"), ("improve", "개선 기록")]
 EVAL_SCOPES = [("all", "전체 요청"), ("failed", "지금 보는 결과에서 틀린 요청만")]
 SAME_SKILL = "same"  # 테스트 요청 추가: 기대 스킬 = 시험하는 스킬
 
@@ -272,6 +315,7 @@ def skills(request):
     """스킬별 사용 기록과 선택 평가 결과, 틀린 요청 목록, 평가 실행."""
     batch, skill = request.GET.get("batch") or None, request.GET.get("skill") or None
     compare = request.GET.get("compare") or None
+    tab = request.GET.get("tab") if request.GET.get("tab") in dict(SKILL_TABS) else "results"
     try:
         data = api.get_skills(batch, compare)
         tries = api.list_improve_tries(skill)
@@ -286,12 +330,16 @@ def skills(request):
             s["eval"]["recall_width"] = round(s["eval"]["recall"] * 100)
         a, b = (s["eval"] or {}).get("recall"), (s["compare"] or {}).get("recall")
         s["recall_diff"] = None if a is None or b is None else round((a - b) * 100)
+        s["compare_width"] = None if b is None else round(b * 100)
     for t in tries:
         t["name"] = _short(t["skill"])
     for c in cases:
         c["expect_name"] = _short(c["expect"]) or "스킬 없음"
         c["bad"] = c["miss"] + c["wrong"]
         c["did_text"] = ", ".join(f"{_short(d['name'])} {d['count']}번" for d in c["did"])
+        # 틀린 실행에서 한 일: 고른 스킬 이름이나 첫 도구 이름 (괄호 없이). 스킬을 고른 경우 입력은 스킬 이름뿐이라 숨긴다
+        c["did_names"] = ", ".join(_short(d["name"]).strip("()") for d in c["did"])
+        c["inputs"] = [x for x in c.get("inputs") or [] if not x.startswith("esports-dev:")]
     known = sorted({c["skill"] for c in all_cases} | {s["skill"] for s in data["skills"]})
     added = [c for c in all_cases if c["origin"] == "ui"]
     for c in added:
@@ -308,9 +356,24 @@ def skills(request):
         "cases_per_skill": CASES_PER_SKILL, "error": request.GET.get("error"),
         "skill_options": [(s, _short(s)) for s in known], "repos": EVAL_REPOS, "added": added,
         "labels": EVAL_LABELS, "same_skill": SAME_SKILL, "scopes": EVAL_SCOPES, "tries": tries,
-        "compare": data.get("compare"),
-        "case_count": len(all_cases),
+        "compare": data.get("compare"), "runner": data.get("runner") or {},
+        "case_count": len(all_cases), "tab": tab, "tabs": SKILL_TABS,
+        "has_usage": bool(data["totals"].get("usage_calls")),
+        "compare_accuracy": _compare_accuracy(data),
+        # 탭을 바꿔도 보던 결과 이름·비교·스킬을 유지한다
+        "keep": urlencode({k: v for k, v in (("batch", batch), ("compare", compare), ("skill", skill)) if v}),
         "query": urlencode({"batch": data["batch"]}) if batch else ""})
+
+
+def _compare_accuracy(data):
+    """비교할 결과의 스킬별 집계로 전체 재현율 차이를 낸다 (지금 결과 - 비교 결과, %p). 없으면 None."""
+    pairs = [(s["eval"], s["compare"]) for s in data["skills"] if s.get("eval") and s.get("compare")]
+    now = [e for e, _ in pairs if e["should"]]
+    before = [c for _, c in pairs if c["should"]]
+    if not now or not before:
+        return None
+    rate = lambda xs: sum(x["hit"] for x in xs) / sum(x["should"] for x in xs)
+    return round((rate(now) - rate(before)) * 100)
 
 
 @require_POST
@@ -320,11 +383,11 @@ def skills_action(request):
     try:
         if f.get("action") == "cancel":
             api.cancel_eval_job(f.get("job_id"))
+        elif f.get("action") in ("runner_on", "runner_off"):
+            api.set_eval_runner(f.get("action") == "runner_on")
         elif f.get("action") in ("edit_case", "remove_case"):
             api.update_eval_case(f.get("case_id", ""), expect=f.get("expect", ""),
                                  remove=f.get("action") == "remove_case")
-            back = f.get("back", "")
-            return redirect(back if back.startswith("/skills/") else "skills")  # 거르던 스킬·결과 이름 그대로
         elif f.get("action") == "add_case":
             skill = f.get("skill", "")
             expect = skill if f.get("expect") == SAME_SKILL else f.get("expect", "")
@@ -344,4 +407,5 @@ def skills_action(request):
                                 int(f.get("repeat") or 1), model, case_ids)
     except (ApiError, ValueError) as e:
         return redirect(f"/skills/?{urlencode({'error': getattr(e, 'message', '입력값이 올바르지 않습니다')})}")
-    return redirect("skills")
+    back = f.get("back", "")
+    return redirect(back if back.startswith("/skills/") else "skills")  # 보던 탭·결과 이름·스킬 그대로

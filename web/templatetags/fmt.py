@@ -32,3 +32,13 @@ def pct(ratio):
 def num(value):
     """1234567 → 1,234,567 (None 이면 -)"""
     return "-" if value is None else f"{value:,}"
+
+
+@register.simple_tag
+def static_v(path):
+    """정적 파일 주소 + ?v=수정 시각. 파일이 바뀌면 주소가 바뀌어 브라우저가 옛 캐시를 쓰지 않는다."""
+    import os
+    from django.contrib.staticfiles import finders
+    from django.templatetags.static import static
+    found = finders.find(path)
+    return f"{static(path)}?v={int(os.path.getmtime(found)) if found else 0}"

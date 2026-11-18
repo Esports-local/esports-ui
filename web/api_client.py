@@ -140,3 +140,8 @@ def update_eval_case(case_id, expect=None, remove=False):
 def list_improve_tries(skill=None):
     """GET /skills/improves — 설명 자동 개선 시도 (dev-workflow evals/improve.py)"""
     return _http("GET", "/skills/improves", params={"skill": skill} if skill else None)["tries"]
+
+
+def set_eval_runner(enabled):
+    """POST /skills/evals/runner — 평가 실행 허용 켜기·끄기 (맥의 실행기가 요청을 가져갈지)"""
+    return _http("POST", "/skills/evals/runner", json={"enabled": bool(enabled)})

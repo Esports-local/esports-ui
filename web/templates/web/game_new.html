@@ -21,7 +21,7 @@
           <td class="right mono">{{ s.duration_sec|tc }}</td>
           <td class="mono">{{ s.width }}x{{ s.height }}</td>
           <td class="right mono">{{ s.size_bytes|filesizeformat }}</td>
-          <td class="small">{% if not s.selectable %}<span class="dim">{{ s.reason }}</span>{% elif s.game_id %}<a href="{% url 'game' s.game_id %}">등록됨 · 보기</a>{% endif %}</td>
+          <td class="small">{% if not s.selectable %}<span class="reason" title="{{ s.reason }}">{% if "1920x1080" in s.reason %}해상도 안 맞음{% else %}{{ s.reason }}{% endif %}</span>{% elif s.game_id %}<a href="{% url 'game' s.game_id %}">이미 등록됨, 보기</a>{% endif %}</td>
         </tr>
         {% empty %}
         <tr><td colspan="6" class="dim">vod 폴더에 영상이 없어요.</td></tr>
